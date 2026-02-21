@@ -16,7 +16,10 @@ const navButtons = document.querySelectorAll<HTMLButtonElement>('.nav-btn')
 let currentView: View = 'log'
 
 // Navigate to a view by name.
-async function navigateTo(view: View, editEntry?: AttendanceEntry): Promise<void> {
+const navigateTo = async (
+  view: View,
+  editEntry?: AttendanceEntry,
+): Promise<void> => {
   currentView = view
 
   // Update nav state.
@@ -31,22 +34,12 @@ async function navigateTo(view: View, editEntry?: AttendanceEntry): Promise<void
     return
   }
 
-  switch (view) {
-    case 'log':
-      renderLogView(
-        mainContent,
-        () => navigateTo('history'),
-        editEntry,
-      )
-      break
-    case 'history':
-      await renderHistoryView(mainContent, (entry) =>
-        navigateTo('log', entry),
-      )
-      break
-    case 'settings':
-      await renderSettingsView(mainContent, () => navigateTo('log'))
-      break
+  if (view === 'log') {
+    await renderLogView(mainContent, () => navigateTo('history'), editEntry)
+  } else if (view === 'history') {
+    await renderHistoryView(mainContent, (entry) => navigateTo('log', entry))
+  } else {
+    await renderSettingsView(mainContent, () => navigateTo('log'))
   }
 }
 

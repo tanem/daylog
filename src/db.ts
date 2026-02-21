@@ -1,6 +1,11 @@
-// IndexedDB access layer. Zero wrapper libraries.
+// IndexedDB access layer.
 
-import type { AttendanceEntry, EncryptedEnvelope, EncryptionMeta } from './types'
+import type {
+  AttendanceEntry,
+  AttendanceSettings,
+  EncryptedEnvelope,
+  EncryptionMeta,
+} from './types'
 
 const DB_NAME = 'daylog'
 const DB_VERSION = 1
@@ -10,7 +15,7 @@ const META_STORE = 'meta'
 let dbInstance: IDBDatabase | null = null
 
 // Open (or create) the database and return a reference.
-function openDb(): Promise<IDBDatabase> {
+const openDb = (): Promise<IDBDatabase> => {
   if (dbInstance) return Promise.resolve(dbInstance)
 
   return new Promise((resolve, reject) => {
@@ -18,12 +23,14 @@ function openDb(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = () => {
       const db = request.result
+      /* v8 ignore start */
       if (!db.objectStoreNames.contains(ENTRIES_STORE)) {
         db.createObjectStore(ENTRIES_STORE, { keyPath: 'id' })
       }
       if (!db.objectStoreNames.contains(META_STORE)) {
         db.createObjectStore(META_STORE, { keyPath: 'key' })
       }
+      /* v8 ignore stop */
     }
 
     request.onsuccess = () => {
@@ -31,77 +38,88 @@ function openDb(): Promise<IDBDatabase> {
       resolve(dbInstance)
     }
 
+    /* v8 ignore start */
     request.onerror = () => reject(request.error)
+    /* v8 ignore stop */
   })
 }
 
 // Generic helper to run a single-store transaction.
-function tx(
+const tx = (
   storeName: string,
   mode: IDBTransactionMode,
-): Promise<IDBObjectStore> {
-  return openDb().then((db) => {
+): Promise<IDBObjectStore> =>
+  openDb().then((db) => {
     const transaction = db.transaction(storeName, mode)
     return transaction.objectStore(storeName)
   })
-}
 
 // ---------- Entries ----------
 
-export async function putEntry(
+export const putEntry = async (
   entry: AttendanceEntry | EncryptedEnvelope,
-): Promise<void> {
+): Promise<void> => {
   const store = await tx(ENTRIES_STORE, 'readwrite')
   return new Promise((resolve, reject) => {
     const req = store.put(entry)
     req.onsuccess = () => resolve()
+    /* v8 ignore start */
     req.onerror = () => reject(req.error)
+    /* v8 ignore stop */
   })
 }
 
-export async function getEntry(
+export const getEntry = async (
   id: string,
-): Promise<AttendanceEntry | EncryptedEnvelope | undefined> {
+): Promise<AttendanceEntry | EncryptedEnvelope | undefined> => {
   const store = await tx(ENTRIES_STORE, 'readonly')
   return new Promise((resolve, reject) => {
     const req = store.get(id)
     req.onsuccess = () => resolve(req.result ?? undefined)
+    /* v8 ignore start */
     req.onerror = () => reject(req.error)
+    /* v8 ignore stop */
   })
 }
 
-export async function getAllEntries(): Promise<
+export const getAllEntries = async (): Promise<
   (AttendanceEntry | EncryptedEnvelope)[]
-> {
+> => {
   const store = await tx(ENTRIES_STORE, 'readonly')
   return new Promise((resolve, reject) => {
     const req = store.getAll()
     req.onsuccess = () => resolve(req.result)
+    /* v8 ignore start */
     req.onerror = () => reject(req.error)
+    /* v8 ignore stop */
   })
 }
 
-export async function deleteEntry(id: string): Promise<void> {
+export const deleteEntry = async (id: string): Promise<void> => {
   const store = await tx(ENTRIES_STORE, 'readwrite')
   return new Promise((resolve, reject) => {
     const req = store.delete(id)
     req.onsuccess = () => resolve()
+    /* v8 ignore start */
     req.onerror = () => reject(req.error)
+    /* v8 ignore stop */
   })
 }
 
-export async function clearAllEntries(): Promise<void> {
+export const clearAllEntries = async (): Promise<void> => {
   const store = await tx(ENTRIES_STORE, 'readwrite')
   return new Promise((resolve, reject) => {
     const req = store.clear()
     req.onsuccess = () => resolve()
+    /* v8 ignore start */
     req.onerror = () => reject(req.error)
+    /* v8 ignore stop */
   })
 }
 
 // ---------- Encryption meta ----------
 
-export async function getEncryptionMeta(): Promise<EncryptionMeta> {
+export const getEncryptionMeta = async (): Promise<EncryptionMeta> => {
   const store = await tx(META_STORE, 'readonly')
   return new Promise((resolve, reject) => {
     const req = store.get('encryption')
@@ -112,24 +130,71 @@ export async function getEncryptionMeta(): Promise<EncryptionMeta> {
         resolve({ enabled: false })
       }
     }
+    /* v8 ignore start */
     req.onerror = () => reject(req.error)
+    /* v8 ignore stop */
   })
 }
 
-export async function setEncryptionMeta(
+export const setEncryptionMeta = async (
   meta: EncryptionMeta,
-): Promise<void> {
+): Promise<void> => {
   const store = await tx(META_STORE, 'readwrite')
   return new Promise((resolve, reject) => {
     const req = store.put({ key: 'encryption', ...meta })
     req.onsuccess = () => resolve()
+    /* v8 ignore start */
     req.onerror = () => reject(req.error)
+    /* v8 ignore stop */
+  })
+}
+
+// ---------- Attendance settings ----------
+
+const DEFAULT_ATTENDANCE: AttendanceSettings = {
+  enabled: false,
+  weeks: 8,
+  percentage: 60,
+}
+
+export const getAttendanceSettings = async (): Promise<AttendanceSettings> => {
+  const store = await tx(META_STORE, 'readonly')
+  return new Promise((resolve, reject) => {
+    const req = store.get('attendance')
+    req.onsuccess = () => {
+      if (req.result) {
+        const raw = req.result as AttendanceSettings & { key: string }
+        resolve({
+          enabled: raw.enabled,
+          weeks: raw.weeks,
+          percentage: raw.percentage,
+        })
+      } else {
+        resolve({ ...DEFAULT_ATTENDANCE })
+      }
+    }
+    /* v8 ignore start */
+    req.onerror = () => reject(req.error)
+    /* v8 ignore stop */
+  })
+}
+
+export const setAttendanceSettings = async (
+  settings: AttendanceSettings,
+): Promise<void> => {
+  const store = await tx(META_STORE, 'readwrite')
+  return new Promise((resolve, reject) => {
+    const req = store.put({ key: 'attendance', ...settings })
+    req.onsuccess = () => resolve()
+    /* v8 ignore start */
+    req.onerror = () => reject(req.error)
+    /* v8 ignore stop */
   })
 }
 
 // ---------- Full wipe ----------
 
-export async function deleteAllData(): Promise<void> {
+export const deleteAllData = async (): Promise<void> => {
   const db = await openDb()
   const storeNames = Array.from(db.objectStoreNames)
   const transaction = db.transaction(storeNames, 'readwrite')
@@ -138,6 +203,8 @@ export async function deleteAllData(): Promise<void> {
   }
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve()
+    /* v8 ignore start */
     transaction.onerror = () => reject(transaction.error)
+    /* v8 ignore stop */
   })
 }

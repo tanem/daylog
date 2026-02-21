@@ -2,13 +2,13 @@
 
 import type { AttendanceEntry } from '../types'
 import { loadAllEntries, removeEntry } from '../entries'
-import { el, formatDate, formatTime } from './helpers'
+import { el, formatDate } from './helpers'
 
 // Render the history list into the given container.
-export async function renderHistoryView(
+export const renderHistoryView = async (
   container: HTMLElement,
   onEdit: (entry: AttendanceEntry) => void,
-): Promise<void> {
+): Promise<void> => {
   const heading = el('h2', {}, 'History')
   const entries = await loadAllEntries()
 
@@ -20,7 +20,6 @@ export async function renderHistoryView(
     return
   }
 
-  // Sort by date descending.
   entries.sort((a, b) => b.date.localeCompare(a.date))
 
   const list = el('ul', { class: 'entry-list' })
@@ -31,22 +30,23 @@ export async function renderHistoryView(
   container.replaceChildren(heading, list)
 }
 
-function entryItem(
+const entryItem = (
   entry: AttendanceEntry,
   onEdit: (entry: AttendanceEntry) => void,
   onDeleted: () => void,
-): HTMLElement {
-  const timeRange = entry.leftAt
-    ? `${formatTime(entry.arrivedAt)} – ${formatTime(entry.leftAt)}`
-    : `${formatTime(entry.arrivedAt)} – ongoing`
-
+): HTMLElement => {
   const li = el(
     'li',
     { class: 'entry-item' },
-    el('div', { class: 'entry-summary' },
+    el(
+      'div',
+      { class: 'entry-summary' },
       el('span', { class: 'entry-date' }, formatDate(entry.date)),
-      el('span', { class: 'entry-reason' }, reasonLabel(entry.reason)),
-      el('span', { class: 'entry-time' }, timeRange),
+      el(
+        'span',
+        { class: `entry-reason entry-reason--${entry.reason}` },
+        reasonLabel(entry.reason),
+      ),
     ),
   )
 
@@ -59,7 +59,11 @@ function entryItem(
   const editBtn = el('button', { class: 'btn btn-small' }, 'Edit')
   editBtn.addEventListener('click', () => onEdit(entry))
 
-  const deleteBtn = el('button', { class: 'btn btn-small btn-danger' }, 'Delete')
+  const deleteBtn = el(
+    'button',
+    { class: 'btn btn-small btn-danger' },
+    'Delete',
+  )
   deleteBtn.addEventListener('click', async () => {
     if (confirm('Delete this entry? This cannot be undone.')) {
       await removeEntry(entry.id)
@@ -73,20 +77,21 @@ function entryItem(
   return li
 }
 
-function reasonLabel(reason: string): string {
+const reasonLabel = (reason: string): string => {
   const labels: Record<string, string> = {
     office: 'Office',
     wfh: 'WFH',
     leave: 'Leave',
     sick: 'Sick',
+    'public-holiday': 'Holiday',
   }
   return labels[reason] ?? reason
 }
 
 // Re-render the view after a deletion.
-function refresh(
+const refresh = (
   container: HTMLElement,
   onEdit: (entry: AttendanceEntry) => void,
-): void {
+): void => {
   renderHistoryView(container, onEdit)
 }

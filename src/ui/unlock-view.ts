@@ -3,16 +3,16 @@
 import { unlock } from '../crypto'
 import { el } from './helpers'
 
-export function renderUnlockView(
+export const renderUnlockView = (
   container: HTMLElement,
   onUnlocked: () => void,
-): void {
+): void => {
   const heading = el('h2', {}, 'Unlock Daylog')
   const pinInput = el('input', {
-    type: 'password',
+    autocomplete: 'off',
     id: 'unlock-pin',
     placeholder: 'Enter your PIN',
-    autocomplete: 'off',
+    type: 'password',
   })
   const msg = el('p', { class: 'pin-message' })
   const btn = el('button', { class: 'btn btn-primary' }, 'Unlock')

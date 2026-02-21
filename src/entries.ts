@@ -6,14 +6,12 @@ import * as db from './db'
 import * as enc from './crypto'
 
 // Generate a unique ID for a new entry.
-function newId(): string {
-  return crypto.randomUUID()
-}
+const newId = (): string => crypto.randomUUID()
 
 // Save a new or existing entry. Encrypts if encryption is enabled.
-export async function saveEntry(
+export const saveEntry = async (
   entry: Omit<AttendanceEntry, 'id'> & { id?: string },
-): Promise<AttendanceEntry> {
+): Promise<AttendanceEntry> => {
   const full: AttendanceEntry = { ...entry, id: entry.id ?? newId() }
   const encrypted = await enc.isEncryptionEnabled()
   if (encrypted) {
@@ -26,7 +24,7 @@ export async function saveEntry(
 }
 
 // Retrieve all entries, decrypting if necessary.
-export async function loadAllEntries(): Promise<AttendanceEntry[]> {
+export const loadAllEntries = async (): Promise<AttendanceEntry[]> => {
   const raw = await db.getAllEntries()
   const encrypted = await enc.isEncryptionEnabled()
   if (!encrypted) {
@@ -44,12 +42,10 @@ export async function loadAllEntries(): Promise<AttendanceEntry[]> {
   return results
 }
 
-// Delete an entry by ID.
-export async function removeEntry(id: string): Promise<void> {
+export const removeEntry = async (id: string): Promise<void> => {
   await db.deleteEntry(id)
 }
 
-// Delete everything.
-export async function wipeAllData(): Promise<void> {
+export const wipeAllData = async (): Promise<void> => {
   await db.deleteAllData()
 }
