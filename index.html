@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1a1a2e" />
+    <meta
+      name="description"
+      content="Track your hybrid work attendance. All data stays on your device."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Daylog</title>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Daylog</h1>
+        <nav id="main-nav">
+          <button data-view="log" class="nav-btn active">Log</button>
+          <button data-view="history" class="nav-btn">History</button>
+          <button data-view="settings" class="nav-btn">Settings</button>
+        </nav>
+      </header>
+      <main id="main-content"></main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
