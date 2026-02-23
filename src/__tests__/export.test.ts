@@ -73,12 +73,11 @@ describe('toCSV', () => {
 })
 
 describe('download', () => {
-  let clickSpy: ReturnType<typeof vi.fn>
+  let clickSpy: ReturnType<typeof vi.spyOn>
   let appendChildSpy: ReturnType<typeof vi.fn>
   let removeChildSpy: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    clickSpy = vi.fn()
     appendChildSpy = vi.spyOn(document.body, 'appendChild')
     removeChildSpy = vi.spyOn(document.body, 'removeChild')
 
@@ -92,7 +91,9 @@ describe('download', () => {
     )
 
     // Stub HTMLAnchorElement.click.
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(clickSpy)
+    clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {})
   })
 
   it('creates a blob URL, clicks the anchor, and cleans up', () => {

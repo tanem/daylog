@@ -1,5 +1,6 @@
 // Integration tests for history-view: renders entries from real DB.
 
+import type { Reason } from '../types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 let renderHistoryView: typeof import('../ui/history-view').renderHistoryView
@@ -175,7 +176,7 @@ describe('renderHistoryView', () => {
     await db.putEntry({
       date: '2026-01-01',
       id: 'unknown-reason',
-      reason: 'custom-reason',
+      reason: 'custom-reason' as Reason,
     })
 
     entries = await import('../entries')

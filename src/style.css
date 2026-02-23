@@ -345,3 +345,12 @@ h3 {
   cursor: pointer;
   font-size: 0.9rem;
 }
+
+/* ---- Version label ---- */
+
+.settings-version {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-top: 2rem;
+  text-align: center;
+}

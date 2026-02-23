@@ -25,6 +25,8 @@ Offline-only PWA for logging daily work attendance type (office, WFH, leave, sic
 - NZ English in all docs, comments, and UI text (e.g. "colour", "organised", "behaviour"). CSS/JS API names like `color` are unchanged.
 - CSS: use existing custom properties (`--bg`, `--accent`, etc.), BEM-lite class naming (`.parent-child`).
 - Tests: Vitest with `jsdom` environment. `fake-indexeddb` provides an in-memory IndexedDB. Run `npm test` (single run) or `npm run test:watch` (interactive). `npm run test:coverage` checks v8 coverage against 100 % thresholds.
+- Type-checking: `npm run typecheck` runs `tsc --noEmit` across all files. The `build` script uses `tsconfig.build.json` which excludes test files.
+- Verification: `npm run check` runs format, lint, typecheck, test:coverage, and build in sequence. Use this to verify all changes before pushing.
 - Commits: conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Body lines use `- ` hyphen bullets, not prose paragraphs.
 - Comments: only for non-obvious logic, decisions, or trade-offs. Do not restate what the code already says.
 - Language in docs and comments: plain, technical. Avoid marketing or hyperbolic phrasing.

@@ -1,11 +1,19 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // Base path for GitHub Pages. Set to '/' if using a custom domain.
 const base = process.env.GITHUB_ACTIONS ? '/daylog/' : '/'
 
+const { version } = JSON.parse(readFileSync('package.json', 'utf-8')) as {
+  version: string
+}
+
 export default defineConfig({
   base,
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+  },
   plugins: [
     VitePWA({
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],

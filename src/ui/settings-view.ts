@@ -204,12 +204,19 @@ export const renderSettingsView = async (
     deleteBtn,
   )
 
+  const versionLabel = el(
+    'p',
+    { class: 'settings-version' },
+    `v${__APP_VERSION__}`,
+  )
+
   container.replaceChildren(
     heading,
     exportGroup,
     attGroup,
     encContent,
     dangerGroup,
+    versionLabel,
   )
 }
 

@@ -36,6 +36,10 @@ describe('renderSettingsView', () => {
     expect(headings).toContain('Attendance tracking')
     expect(headings).toContain('PIN protection')
     expect(headings).toContain('Danger zone')
+
+    const version = container.querySelector('.settings-version')
+    expect(version).not.toBeNull()
+    expect(version!.textContent).toMatch(/^v\d/)
   })
 
   it('exports JSON when button is clicked', async () => {
