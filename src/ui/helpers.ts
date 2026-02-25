@@ -2,7 +2,7 @@
 
 // Format an ISO date string for display (NZ locale).
 export const formatDate = (iso: string): string =>
-  new Date(iso).toLocaleDateString('en-NZ', {
+  new Date(`${iso}T00:00:00`).toLocaleDateString('en-NZ', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -43,4 +43,27 @@ export const el = <K extends keyof HTMLElementTagNameMap>(
     }
   }
   return element
+}
+
+// Wrap a labelled input in a field group div.
+// Links the label to the input via its id attribute for accessibility.
+export const fieldGroup = (label: string, input: HTMLElement): HTMLElement => {
+  const wrapper = el('div', { class: 'field-group' })
+  const labelAttrs: Record<string, string> = {}
+  const inputId = input.getAttribute('id')
+  if (inputId) {
+    labelAttrs.for = inputId
+  }
+  wrapper.append(el('label', labelAttrs, label), input)
+  return wrapper
+}
+
+// Validate that a string is a real YYYY-MM-DD calendar date.
+export const isValidDate = (dateStr: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false
+  const d = new Date(`${dateStr}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return false
+  // Verify parsed components match input (catches e.g. Feb 30 → Mar 2).
+  const [y, m, day] = dateStr.split('-').map(Number) as [number, number, number]
+  return d.getFullYear() === y && d.getMonth() + 1 === m && d.getDate() === day
 }

@@ -10,7 +10,8 @@
 
 :root {
   --accent: #e94560;
-  --accent-hover: #ff6b81;
+  --accent-bg: #bf3048;
+  --accent-bg-hover: #d43d57;
   --bg: #1a1a2e;
   --bg-input: #0f3460;
   --bg-surface: #16213e;
@@ -24,6 +25,12 @@
 
 html {
   font-size: 16px;
+}
+
+/* Focus ring for keyboard navigation. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 body {
@@ -69,6 +76,7 @@ header h1 {
   color: var(--text-muted);
   cursor: pointer;
   font-size: 0.875rem;
+  min-height: 44px;
   padding: 0.5rem 1rem;
   transition:
     background 0.15s,
@@ -80,7 +88,7 @@ header h1 {
 }
 
 .nav-btn.active {
-  background: var(--accent);
+  background: var(--accent-bg);
   color: #fff;
 }
 
@@ -93,6 +101,7 @@ header h1 {
   color: var(--text);
   cursor: pointer;
   font-size: 0.9rem;
+  min-height: 44px;
   padding: 0.6rem 1.2rem;
   transition: background 0.15s;
 }
@@ -102,13 +111,13 @@ header h1 {
 }
 
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-bg);
+  border-color: var(--accent-bg);
   color: #fff;
 }
 
 .btn-primary:hover {
-  background: var(--accent-hover);
+  background: var(--accent-bg-hover);
 }
 
 .btn-danger {
@@ -163,7 +172,7 @@ textarea {
   color: var(--text);
   font-family: inherit;
   font-size: 1rem;
-  outline: none;
+  min-height: 44px;
   padding: 0.6rem 0.8rem;
   transition: border-color 0.15s;
 }
@@ -226,7 +235,7 @@ textarea {
 }
 
 .entry-reason--sick {
-  background: #b5651d;
+  background: #9a5218;
 }
 
 .entry-reason--public-holiday {
@@ -255,6 +264,11 @@ textarea {
   margin-bottom: 0.5rem;
 }
 
+.settings-group h4 {
+  margin-bottom: 0.25rem;
+  margin-top: 1.25rem;
+}
+
 .settings-group p {
   color: var(--text-muted);
   font-size: 0.9rem;
@@ -266,9 +280,17 @@ textarea {
   font-weight: 600;
 }
 
-.pin-message {
+.pin-message,
+.form-message {
+  color: var(--accent);
   font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
   min-height: 1.2em;
+}
+
+.pin-message-success {
+  color: #4caf7c;
 }
 
 /* ---- Empty state ---- */
@@ -308,7 +330,7 @@ h3 {
 }
 
 .attendance-ok {
-  color: #2d6a4f;
+  color: #4caf7c;
 }
 
 .attendance-below {
@@ -353,4 +375,56 @@ h3 {
   font-size: 0.75rem;
   margin-top: 2rem;
   text-align: center;
+}
+
+/* ---- Inline delete confirmation ---- */
+
+.confirm-prompt {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ---- Skip link ---- */
+
+.skip-link {
+  background: var(--bg-surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--text);
+  left: 50%;
+  padding: 0.5rem 1rem;
+  position: absolute;
+  top: -100%;
+  transform: translateX(-50%);
+  z-index: 100;
+}
+
+.skip-link:focus {
+  top: var(--gap);
+}
+
+/* ---- Accessibility ---- */
+
+/* Suppress focus ring on programmatically-focused headings. */
+h2[tabindex='-1']:focus {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .entry-reason {
+    border: 1px solid;
+  }
+
+  .nav-btn.active {
+    border: 2px solid;
+  }
 }

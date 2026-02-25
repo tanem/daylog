@@ -1,10 +1,18 @@
 // Settings view: export data, manage encryption, delete all data.
 
-import { loadAllEntries, wipeAllData } from '../entries'
-import { enableEncryption, isEncryptionEnabled, lock } from '../crypto'
+import {
+  loadAllEntries,
+  wipeAllData,
+  migrateEntriesToEncrypted,
+  changeEncryptionPin,
+  disableEncryption,
+} from '../entries'
+import { enableEncryption, isEncryptionEnabled, lock, unlock } from '../crypto'
 import { toJSON, toCSV, download } from '../export'
 import { loadAttendanceSettings, saveAttendanceSettings } from '../settings'
-import { el } from './helpers'
+import { el, fieldGroup } from './helpers'
+
+const MIN_PIN_LENGTH = 6
 
 export const renderSettingsView = async (
   container: HTMLElement,
@@ -14,28 +22,38 @@ export const renderSettingsView = async (
 
   // ---- Export section ----
   const exportHeading = el('h3', {}, 'Export data')
+  const encEnabled = await isEncryptionEnabled()
+
+  const doExport = async (
+    formatter: (entries: Awaited<ReturnType<typeof loadAllEntries>>) => string,
+    ext: string,
+    mime: string,
+  ): Promise<void> => {
+    const allEntries = await loadAllEntries()
+    const content = formatter(allEntries)
+    const date = new Date().toISOString().slice(0, 10)
+    download(content, `daylog-export-${date}.${ext}`, mime)
+  }
 
   const exportJsonBtn = el('button', { class: 'btn' }, 'Export as JSON')
-  exportJsonBtn.addEventListener('click', async () => {
-    const entries = await loadAllEntries()
-    const content = toJSON(entries)
-    const date = new Date().toISOString().slice(0, 10)
-    download(content, `daylog-export-${date}.json`, 'application/json')
-  })
+  exportJsonBtn.addEventListener('click', () =>
+    doExport(toJSON, 'json', 'application/json'),
+  )
 
   const exportCsvBtn = el('button', { class: 'btn' }, 'Export as CSV')
-  exportCsvBtn.addEventListener('click', async () => {
-    const entries = await loadAllEntries()
-    const content = toCSV(entries)
-    const date = new Date().toISOString().slice(0, 10)
-    download(content, `daylog-export-${date}.csv`, 'text/csv')
-  })
+  exportCsvBtn.addEventListener('click', () =>
+    doExport(toCSV, 'csv', 'text/csv'),
+  )
+
+  const exportWarning = encEnabled
+    ? 'Exports are plaintext even when encryption is enabled. Handle them carefully.'
+    : 'Export files are plaintext. Handle them carefully.'
 
   const exportGroup = el(
     'div',
     { class: 'settings-group' },
     exportHeading,
-    el('p', {}, 'Export files are plaintext. Handle them carefully.'),
+    el('p', {}, exportWarning),
     el('div', { class: 'btn-row' }, exportJsonBtn, exportCsvBtn),
   )
 
@@ -115,10 +133,115 @@ export const renderSettingsView = async (
 
   // ---- Encryption section ----
   const encHeading = el('h3', {}, 'PIN protection')
-  const encEnabled = await isEncryptionEnabled()
   let encContent: HTMLElement
 
   if (encEnabled) {
+    // ---- Change PIN form ----
+    const changePinMsg = el('p', {
+      class: 'pin-message',
+      'aria-live': 'assertive',
+    })
+    const currentPinInput = el('input', {
+      autocomplete: 'off',
+      id: 'current-pin',
+      type: 'password',
+    })
+    const newPinInput = el('input', {
+      autocomplete: 'off',
+      id: 'new-pin',
+      type: 'password',
+    })
+    const confirmNewPinInput = el('input', {
+      autocomplete: 'off',
+      id: 'confirm-new-pin',
+      type: 'password',
+    })
+    const changePinBtn = el(
+      'button',
+      { class: 'btn', type: 'submit' },
+      'Change PIN',
+    )
+
+    const changePinForm = el('form', { class: 'pin-form' })
+    changePinForm.append(
+      fieldGroup('Current PIN', currentPinInput),
+      fieldGroup('New PIN', newPinInput),
+      fieldGroup('Confirm new PIN', confirmNewPinInput),
+      changePinBtn,
+      changePinMsg,
+    )
+
+    changePinForm.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      changePinMsg.classList.remove('pin-message-success')
+      const currentPin = (currentPinInput as HTMLInputElement).value
+      const newPin = (newPinInput as HTMLInputElement).value
+      const confirmNew = (confirmNewPinInput as HTMLInputElement).value
+      if (!currentPin) {
+        changePinMsg.textContent = 'Enter your current PIN.'
+        return
+      }
+      const valid = await unlock(currentPin)
+      if (!valid) {
+        changePinMsg.textContent = 'Current PIN is incorrect.'
+        return
+      }
+      if (!newPin || newPin.length < MIN_PIN_LENGTH) {
+        changePinMsg.textContent = `New PIN must be at least ${MIN_PIN_LENGTH} characters.`
+        return
+      }
+      if (newPin !== confirmNew) {
+        changePinMsg.textContent = 'New PINs do not match.'
+        return
+      }
+      await changeEncryptionPin(newPin)
+      changePinMsg.textContent = 'PIN changed successfully.'
+      changePinMsg.classList.add('pin-message-success')
+      ;(currentPinInput as HTMLInputElement).value = ''
+      ;(newPinInput as HTMLInputElement).value = ''
+      ;(confirmNewPinInput as HTMLInputElement).value = ''
+    })
+
+    // ---- Disable encryption ----
+    const disableMsg = el('p', {
+      class: 'pin-message',
+      'aria-live': 'assertive',
+    })
+    const disablePinInput = el('input', {
+      autocomplete: 'off',
+      id: 'disable-pin',
+      type: 'password',
+    })
+    const disableBtn = el(
+      'button',
+      { class: 'btn btn-danger', type: 'submit' },
+      'Disable encryption',
+    )
+
+    const disableForm = el('form', { class: 'pin-form' })
+    disableForm.append(
+      fieldGroup('PIN', disablePinInput),
+      disableBtn,
+      disableMsg,
+    )
+
+    disableForm.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const pin = (disablePinInput as HTMLInputElement).value
+      if (!pin) {
+        disableMsg.textContent = 'Enter your PIN to disable encryption.'
+        return
+      }
+      const valid = await unlock(pin)
+      if (!valid) {
+        disableMsg.textContent = 'PIN is incorrect.'
+        return
+      }
+      await disableEncryption()
+      disableMsg.textContent = ''
+      renderSettingsView(container, onDataWiped)
+    })
+
     encContent = el(
       'div',
       { class: 'settings-group' },
@@ -129,36 +252,62 @@ export const renderSettingsView = async (
         { class: 'warning' },
         'If you forget your PIN, your data cannot be recovered.',
       ),
+      el('h4', {}, 'Change PIN'),
+      changePinForm,
+      el('h4', {}, 'Disable encryption'),
+      el(
+        'p',
+        {},
+        'Disabling encryption will decrypt all entries and store them as plaintext.',
+      ),
+      disableForm,
     )
   } else {
     const pinInput = el('input', {
       autocomplete: 'off',
+      'aria-describedby': 'pin-hint',
       id: 'pin-input',
-      placeholder: 'Choose a PIN',
       type: 'password',
     })
     const confirmInput = el('input', {
       autocomplete: 'off',
       id: 'pin-confirm',
-      placeholder: 'Confirm PIN',
       type: 'password',
     })
-    const enableBtn = el('button', { class: 'btn' }, 'Enable encryption')
-    const pinMsg = el('p', { class: 'pin-message' })
+    const enableBtn = el(
+      'button',
+      { class: 'btn', type: 'submit' },
+      'Enable encryption',
+    )
+    const pinMsg = el('p', {
+      class: 'pin-message',
+      'aria-live': 'assertive',
+    })
 
-    enableBtn.addEventListener('click', async () => {
+    const enableForm = el('form', { class: 'pin-form' })
+    enableForm.append(
+      fieldGroup('PIN', pinInput),
+      fieldGroup('Confirm PIN', confirmInput),
+      enableBtn,
+      pinMsg,
+    )
+
+    enableForm.addEventListener('submit', async (e) => {
+      e.preventDefault()
       const pin = (pinInput as HTMLInputElement).value
-      const confirm = (confirmInput as HTMLInputElement).value
-      if (!pin || pin.length < 4) {
-        pinMsg.textContent = 'PIN must be at least 4 characters.'
+      const confirmPin = (confirmInput as HTMLInputElement).value
+      if (!pin || pin.length < MIN_PIN_LENGTH) {
+        pinMsg.textContent = `PIN must be at least ${MIN_PIN_LENGTH} characters.`
         return
       }
-      if (pin !== confirm) {
+      if (pin !== confirmPin) {
         pinMsg.textContent = 'PINs do not match.'
         return
       }
       await enableEncryption(pin)
+      await migrateEntriesToEncrypted()
       pinMsg.textContent = 'Encryption enabled.'
+      pinMsg.classList.add('pin-message-success')
       renderSettingsView(container, onDataWiped)
     })
 
@@ -173,27 +322,54 @@ export const renderSettingsView = async (
       ),
       el(
         'p',
+        { class: 'pin-hint', id: 'pin-hint' },
+        'Longer PINs are stronger. Letters and numbers are both fine.',
+      ),
+      el(
+        'p',
         { class: 'warning' },
         'If you forget your PIN, recovery is impossible. Your data will be permanently lost.',
       ),
-      el('div', { class: 'pin-form' }, pinInput, confirmInput, enableBtn),
-      pinMsg,
+      enableForm,
     )
   }
 
   // ---- Danger zone ----
   const dangerHeading = el('h3', {}, 'Danger zone')
-  const deleteBtn = el('button', { class: 'btn btn-danger' }, 'Delete all data')
-  deleteBtn.addEventListener('click', async () => {
-    if (
-      confirm(
-        'This will permanently delete all your attendance data. This cannot be undone. Continue?',
-      )
-    ) {
-      lock()
-      await wipeAllData()
-      onDataWiped()
+  const deleteConfirmInput = el('input', {
+    autocomplete: 'off',
+    id: 'delete-confirm',
+    type: 'text',
+  })
+  const deleteBtn = el(
+    'button',
+    { class: 'btn btn-danger', type: 'submit' },
+    'Delete all data',
+  )
+  const deleteMsg = el('p', {
+    class: 'pin-message',
+    'aria-live': 'assertive',
+  })
+
+  const deleteForm = el('form', { class: 'pin-form' })
+  deleteForm.append(
+    fieldGroup('Type "delete" to confirm', deleteConfirmInput),
+    deleteBtn,
+    deleteMsg,
+  )
+
+  deleteForm.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const value = (deleteConfirmInput as HTMLInputElement).value
+      .trim()
+      .toLowerCase()
+    if (value !== 'delete') {
+      deleteMsg.textContent = 'Type "delete" to confirm.'
+      return
     }
+    lock()
+    await wipeAllData()
+    onDataWiped()
   })
 
   const dangerGroup = el(
@@ -201,7 +377,7 @@ export const renderSettingsView = async (
     { class: 'settings-group' },
     dangerHeading,
     el('p', {}, 'Permanently remove all data from this device.'),
-    deleteBtn,
+    deleteForm,
   )
 
   const versionLabel = el(
@@ -218,10 +394,4 @@ export const renderSettingsView = async (
     dangerGroup,
     versionLabel,
   )
-}
-
-const fieldGroup = (label: string, input: HTMLElement): HTMLElement => {
-  const wrapper = el('div', { class: 'field-group' })
-  wrapper.append(el('label', {}, label), input)
-  return wrapper
 }

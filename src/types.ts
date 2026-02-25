@@ -35,4 +35,6 @@ export interface AttendanceStats {
 export interface EncryptionMeta {
   enabled: boolean
   salt?: Uint8Array
+  verificationIv?: Uint8Array
+  verificationTag?: ArrayBuffer
 }

@@ -250,4 +250,130 @@ describe('encryption round-trip', () => {
     const dates = all.map((e) => e.date).sort()
     expect(dates).toEqual(['2026-01-01', '2026-01-02'])
   })
+
+  it('unlock returns false for wrong PIN', async () => {
+    await enc.enableEncryption(PIN)
+    enc.lock()
+
+    const result = await enc.unlock('wrongpin')
+    expect(result).toBe(false)
+    expect(enc.isUnlocked()).toBe(false)
+  })
+
+  it('unlock succeeds with legacy meta lacking verification tag', async () => {
+    // Simulate legacy meta: enabled with salt but no verificationIv/verificationTag.
+    const salt = new Uint8Array(16)
+    crypto.getRandomValues(salt)
+    await db.setEncryptionMeta({ enabled: true, salt })
+
+    // Unlock should succeed (skips verification when tag is absent).
+    const result = await enc.unlock(PIN)
+    expect(result).toBe(true)
+    expect(enc.isUnlocked()).toBe(true)
+  })
+
+  it('migrateEntriesToEncrypted encrypts existing plaintext entries', async () => {
+    // Save plaintext entries first.
+    await db.putEntry({
+      date: '2026-01-01',
+      id: 'plain-1',
+      reason: 'office',
+    } as AttendanceEntry)
+    await db.putEntry({
+      date: '2026-01-02',
+      id: 'plain-2',
+      reason: 'wfh',
+    } as AttendanceEntry)
+
+    // Enable encryption and migrate.
+    await enc.enableEncryption(PIN)
+    await entries.migrateEntriesToEncrypted()
+
+    // Raw DB entries should now be encrypted.
+    const raw = await db.getAllEntries()
+    expect(raw).toHaveLength(2)
+    for (const item of raw) {
+      expect('ciphertext' in item).toBe(true)
+    }
+
+    // Entries are still loadable.
+    const all = await entries.loadAllEntries()
+    expect(all).toHaveLength(2)
+  })
+
+  it('migrateEntriesToEncrypted skips already-encrypted entries', async () => {
+    // Enable encryption and save an encrypted entry first.
+    await enc.enableEncryption(PIN)
+    await entries.saveEntry({ date: '2026-01-01', reason: 'office' })
+
+    // Manually insert a plaintext entry into the DB.
+    await db.putEntry({
+      date: '2026-01-02',
+      id: 'plain-1',
+      reason: 'wfh',
+    } as AttendanceEntry)
+
+    await entries.migrateEntriesToEncrypted()
+
+    // Both entries should be encrypted.
+    const raw = await db.getAllEntries()
+    expect(raw).toHaveLength(2)
+    for (const item of raw) {
+      expect('ciphertext' in item).toBe(true)
+    }
+
+    const all = await entries.loadAllEntries()
+    expect(all).toHaveLength(2)
+  })
+
+  it('changeEncryptionPin re-encrypts entries with new key', async () => {
+    await enc.enableEncryption(PIN)
+    await entries.saveEntry({ date: '2026-02-20', reason: 'office' })
+
+    const newPin = 'newpin456'
+    await entries.changeEncryptionPin(newPin)
+
+    // Old PIN should no longer work.
+    enc.lock()
+    const oldResult = await enc.unlock(PIN)
+    expect(oldResult).toBe(false)
+
+    // New PIN should work.
+    const newResult = await enc.unlock(newPin)
+    expect(newResult).toBe(true)
+
+    const all = await entries.loadAllEntries()
+    expect(all).toHaveLength(1)
+    expect(all[0]!.date).toBe('2026-02-20')
+  })
+
+  it('disableEncryption decrypts all entries and clears meta', async () => {
+    await enc.enableEncryption(PIN)
+    await entries.saveEntry({ date: '2026-02-20', reason: 'office' })
+
+    await entries.disableEncryption()
+
+    // Encryption should be disabled.
+    const enabled = await enc.isEncryptionEnabled()
+    expect(enabled).toBe(false)
+
+    // Session should be locked.
+    expect(enc.isUnlocked()).toBe(false)
+
+    // Entries should be readable as plaintext.
+    const all = await entries.loadAllEntries()
+    expect(all).toHaveLength(1)
+    expect(all[0]!.date).toBe('2026-02-20')
+
+    // Raw DB entries should be plaintext (no ciphertext).
+    const raw = await db.getAllEntries()
+    expect('ciphertext' in raw[0]!).toBe(false)
+  })
+
+  it('changePin throws when session is locked', async () => {
+    await enc.enableEncryption(PIN)
+    enc.lock()
+
+    await expect(enc.changePin('newpin')).rejects.toThrow('Session is locked.')
+  })
 })

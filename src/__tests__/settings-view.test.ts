@@ -22,6 +22,12 @@ beforeEach(async () => {
 
 const getContainer = (): HTMLElement => document.createElement('div')
 
+// Submit the form that contains the given input element.
+const submitFormFor = (container: HTMLElement, inputId: string): void => {
+  const form = container.querySelector(inputId)!.closest('form')!
+  form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+}
+
 describe('renderSettingsView', () => {
   it('renders all sections', async () => {
     const container = getContainer()
@@ -97,7 +103,7 @@ describe('renderSettingsView', () => {
       expect(container.querySelector('#pin-confirm')).toBeTruthy()
     })
 
-    it('rejects PIN shorter than 4 characters', async () => {
+    it('rejects PIN shorter than 6 characters', async () => {
       const container = getContainer()
       await renderSettingsView(container, vi.fn())
 
@@ -105,17 +111,14 @@ describe('renderSettingsView', () => {
       const confirmInput = container.querySelector(
         '#pin-confirm',
       ) as HTMLInputElement
-      pinInput.value = '12'
-      confirmInput.value = '12'
+      pinInput.value = '1234'
+      confirmInput.value = '1234'
 
-      const enableBtn = Array.from(container.querySelectorAll('button')).find(
-        (b) => b.textContent === 'Enable encryption',
-      )!
-      enableBtn.click()
+      submitFormFor(container, '#pin-input')
 
       await vi.waitFor(() => {
         const msg = container.querySelector('.pin-message')!
-        expect(msg.textContent).toBe('PIN must be at least 4 characters.')
+        expect(msg.textContent).toBe('PIN must be at least 6 characters.')
       })
     })
 
@@ -127,13 +130,10 @@ describe('renderSettingsView', () => {
       const confirmInput = container.querySelector(
         '#pin-confirm',
       ) as HTMLInputElement
-      pinInput.value = '1234'
-      confirmInput.value = '5678'
+      pinInput.value = 'abcdef'
+      confirmInput.value = 'ghijkl'
 
-      const enableBtn = Array.from(container.querySelectorAll('button')).find(
-        (b) => b.textContent === 'Enable encryption',
-      )!
-      enableBtn.click()
+      submitFormFor(container, '#pin-input')
 
       await vi.waitFor(() => {
         const msg = container.querySelector('.pin-message')!
@@ -152,10 +152,7 @@ describe('renderSettingsView', () => {
       pinInput.value = 'test1234'
       confirmInput.value = 'test1234'
 
-      const enableBtn = Array.from(container.querySelectorAll('button')).find(
-        (b) => b.textContent === 'Enable encryption',
-      )!
-      enableBtn.click()
+      submitFormFor(container, '#pin-input')
 
       // After enabling, PIN form should be gone and enabled message shown.
       await vi.waitFor(() => {
@@ -192,34 +189,29 @@ describe('renderSettingsView', () => {
       pinInput.value = ''
       confirmInput.value = ''
 
-      const enableBtn = Array.from(container.querySelectorAll('button')).find(
-        (b) => b.textContent === 'Enable encryption',
-      )!
-      enableBtn.click()
+      submitFormFor(container, '#pin-input')
 
       await vi.waitFor(() => {
         const msg = container.querySelector('.pin-message')!
-        expect(msg.textContent).toBe('PIN must be at least 4 characters.')
+        expect(msg.textContent).toBe('PIN must be at least 6 characters.')
       })
     })
   })
 
   describe('danger zone', () => {
-    it('wipes all data and calls onDataWiped when confirmed', async () => {
+    it('wipes all data when "delete" is typed and button clicked', async () => {
       await entries.saveEntry({ date: '2026-01-01', reason: 'office' })
-      vi.stubGlobal(
-        'confirm',
-        vi.fn(() => true),
-      )
 
       const container = getContainer()
       const onDataWiped = vi.fn()
       await renderSettingsView(container, onDataWiped)
 
-      const deleteBtn = container.querySelector(
-        '.btn-danger',
-      ) as HTMLButtonElement
-      deleteBtn.click()
+      const confirmInput = container.querySelector(
+        '#delete-confirm',
+      ) as HTMLInputElement
+      confirmInput.value = 'delete'
+
+      submitFormFor(container, '#delete-confirm')
 
       await vi.waitFor(() => {
         expect(onDataWiped).toHaveBeenCalledOnce()
@@ -229,26 +221,27 @@ describe('renderSettingsView', () => {
       expect(all).toHaveLength(0)
     })
 
-    it('does nothing when confirm is cancelled', async () => {
+    it('does nothing when confirmation text is wrong', async () => {
       await entries.saveEntry({ date: '2026-01-01', reason: 'office' })
-      vi.stubGlobal(
-        'confirm',
-        vi.fn(() => false),
-      )
 
       const container = getContainer()
       const onDataWiped = vi.fn()
       await renderSettingsView(container, onDataWiped)
 
-      const deleteBtn = container.querySelector(
-        '.btn-danger',
-      ) as HTMLButtonElement
-      deleteBtn.click()
+      const confirmInput = container.querySelector(
+        '#delete-confirm',
+      ) as HTMLInputElement
+      confirmInput.value = 'nope'
 
-      // Small wait to ensure nothing happened.
-      await new Promise((r) => setTimeout(r, 50))
+      submitFormFor(container, '#delete-confirm')
+
+      await vi.waitFor(() => {
+        const msg = container.querySelectorAll('.pin-message')
+        const lastMsg = msg[msg.length - 1]!
+        expect(lastMsg.textContent).toBe('Type "delete" to confirm.')
+      })
+
       expect(onDataWiped).not.toHaveBeenCalled()
-
       const all = await entries.loadAllEntries()
       expect(all).toHaveLength(1)
     })
@@ -482,6 +475,292 @@ describe('renderSettingsView', () => {
         const result = await settings.loadAttendanceSettings()
         expect(result.weeks).toBe(8)
       })
+    })
+  })
+
+  describe('export with encryption', () => {
+    it('shows encryption-aware warning when encryption is enabled', async () => {
+      await enc.enableEncryption('testpin123')
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      expect(container.textContent).toContain(
+        'Exports are plaintext even when encryption is enabled.',
+      )
+    })
+
+    it('shows basic warning when encryption is not enabled', async () => {
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      expect(container.textContent).toContain(
+        'Export files are plaintext. Handle them carefully.',
+      )
+    })
+
+    it('exports without confirmation when encrypted', async () => {
+      await enc.enableEncryption('testpin123')
+      await entries.saveEntry({ date: '2026-02-20', reason: 'office' })
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const buttons = Array.from(container.querySelectorAll('button'))
+      const jsonBtn = buttons.find((b) => b.textContent === 'Export as JSON')!
+      jsonBtn.click()
+
+      await vi.waitFor(() => {
+        expect(exportModule.download).toHaveBeenCalledOnce()
+      })
+    })
+
+    it('exports encrypted data as plaintext with warning visible', async () => {
+      await enc.enableEncryption('testpin123')
+      await entries.saveEntry({ date: '2026-02-20', reason: 'office' })
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      // The warning is always visible, no confirm() dialog needed.
+      expect(container.textContent).toContain(
+        'Exports are plaintext even when encryption is enabled.',
+      )
+
+      const buttons = Array.from(container.querySelectorAll('button'))
+      const jsonBtn = buttons.find((b) => b.textContent === 'Export as JSON')!
+      jsonBtn.click()
+
+      await vi.waitFor(() => {
+        expect(exportModule.download).toHaveBeenCalledOnce()
+      })
+    })
+  })
+
+  describe('change PIN', () => {
+    it('shows change PIN form when encryption is enabled', async () => {
+      await enc.enableEncryption('oldpin123')
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      expect(container.querySelector('#current-pin')).toBeTruthy()
+      expect(container.querySelector('#new-pin')).toBeTruthy()
+      expect(container.querySelector('#confirm-new-pin')).toBeTruthy()
+    })
+
+    it('rejects empty current PIN', async () => {
+      await enc.enableEncryption('oldpin123')
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      submitFormFor(container, '#current-pin')
+
+      await vi.waitFor(() => {
+        const msgs = container.querySelectorAll('.pin-message')
+        const changePinMsg = msgs[0]!
+        expect(changePinMsg.textContent).toBe('Enter your current PIN.')
+      })
+    })
+
+    it('rejects incorrect current PIN', async () => {
+      await enc.enableEncryption('oldpin123')
+      enc.lock()
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const currentPin = container.querySelector(
+        '#current-pin',
+      ) as HTMLInputElement
+      currentPin.value = 'wrongpin99'
+
+      submitFormFor(container, '#current-pin')
+
+      await vi.waitFor(() => {
+        const msgs = container.querySelectorAll('.pin-message')
+        const changePinMsg = msgs[0]!
+        expect(changePinMsg.textContent).toBe('Current PIN is incorrect.')
+      })
+    })
+
+    it('rejects new PIN shorter than 6 characters', async () => {
+      await enc.enableEncryption('oldpin123')
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const currentPin = container.querySelector(
+        '#current-pin',
+      ) as HTMLInputElement
+      currentPin.value = 'oldpin123'
+
+      const newPin = container.querySelector('#new-pin') as HTMLInputElement
+      newPin.value = '1234'
+
+      submitFormFor(container, '#current-pin')
+
+      await vi.waitFor(() => {
+        const msgs = container.querySelectorAll('.pin-message')
+        const changePinMsg = msgs[0]!
+        expect(changePinMsg.textContent).toBe(
+          'New PIN must be at least 6 characters.',
+        )
+      })
+    })
+
+    it('rejects mismatched new PINs', async () => {
+      await enc.enableEncryption('oldpin123')
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const currentPin = container.querySelector(
+        '#current-pin',
+      ) as HTMLInputElement
+      currentPin.value = 'oldpin123'
+
+      const newPin = container.querySelector('#new-pin') as HTMLInputElement
+      newPin.value = 'newpin123'
+
+      const confirmNew = container.querySelector(
+        '#confirm-new-pin',
+      ) as HTMLInputElement
+      confirmNew.value = 'newpin456'
+
+      submitFormFor(container, '#current-pin')
+
+      await vi.waitFor(() => {
+        const msgs = container.querySelectorAll('.pin-message')
+        const changePinMsg = msgs[0]!
+        expect(changePinMsg.textContent).toBe('New PINs do not match.')
+      })
+    })
+
+    it('successfully changes PIN and re-encrypts entries', async () => {
+      await enc.enableEncryption('oldpin123')
+      await entries.saveEntry({ date: '2026-02-20', reason: 'office' })
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const currentPin = container.querySelector(
+        '#current-pin',
+      ) as HTMLInputElement
+      currentPin.value = 'oldpin123'
+
+      const newPin = container.querySelector('#new-pin') as HTMLInputElement
+      newPin.value = 'newpin123'
+
+      const confirmNew = container.querySelector(
+        '#confirm-new-pin',
+      ) as HTMLInputElement
+      confirmNew.value = 'newpin123'
+
+      submitFormFor(container, '#current-pin')
+
+      await vi.waitFor(() => {
+        const msgs = container.querySelectorAll('.pin-message')
+        const changePinMsg = msgs[0]!
+        expect(changePinMsg.textContent).toBe('PIN changed successfully.')
+      })
+
+      // Verify data is accessible with new PIN.
+      enc.lock()
+      const ok = await enc.unlock('newpin123')
+      expect(ok).toBe(true)
+      const all = await entries.loadAllEntries()
+      expect(all).toHaveLength(1)
+      expect(all[0]!.date).toBe('2026-02-20')
+    })
+  })
+
+  describe('disable encryption', () => {
+    it('shows disable encryption form when encryption is enabled', async () => {
+      await enc.enableEncryption('testpin123')
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      expect(container.querySelector('#disable-pin')).toBeTruthy()
+      expect(container.textContent).toContain('Disable encryption')
+    })
+
+    it('rejects empty PIN for disable', async () => {
+      await enc.enableEncryption('testpin123')
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      submitFormFor(container, '#disable-pin')
+
+      await vi.waitFor(() => {
+        const msgs = container.querySelectorAll('.pin-message')
+        const disableMsg = msgs[1]!
+        expect(disableMsg.textContent).toBe(
+          'Enter your PIN to disable encryption.',
+        )
+      })
+    })
+
+    it('rejects incorrect PIN for disable', async () => {
+      await enc.enableEncryption('testpin123')
+      enc.lock()
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const disablePin = container.querySelector(
+        '#disable-pin',
+      ) as HTMLInputElement
+      disablePin.value = 'wrongpin99'
+
+      submitFormFor(container, '#disable-pin')
+
+      await vi.waitFor(() => {
+        const msgs = container.querySelectorAll('.pin-message')
+        const disableMsg = msgs[1]!
+        expect(disableMsg.textContent).toBe('PIN is incorrect.')
+      })
+    })
+
+    it('disables encryption and re-renders', async () => {
+      await enc.enableEncryption('testpin123')
+      await entries.saveEntry({ date: '2026-02-20', reason: 'office' })
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const disablePin = container.querySelector(
+        '#disable-pin',
+      ) as HTMLInputElement
+      disablePin.value = 'testpin123'
+
+      submitFormFor(container, '#disable-pin')
+
+      // After disabling, should re-render and show the enable form.
+      await vi.waitFor(() => {
+        expect(container.querySelector('#pin-input')).toBeTruthy()
+      })
+
+      // Entries are now plaintext.
+      const enabled = await enc.isEncryptionEnabled()
+      expect(enabled).toBe(false)
+      const all = await entries.loadAllEntries()
+      expect(all).toHaveLength(1)
+      expect(all[0]!.date).toBe('2026-02-20')
+    })
+  })
+
+  describe('PIN hint', () => {
+    it('shows PIN strength hint when encryption is not enabled', async () => {
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      expect(container.textContent).toContain(
+        'Longer PINs are stronger. Letters and numbers are both fine.',
+      )
     })
   })
 })

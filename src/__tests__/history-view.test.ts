@@ -122,18 +122,20 @@ describe('renderHistoryView', () => {
       reason: 'leave',
     })
 
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => true),
-    )
-
     const container = getContainer()
     await renderHistoryView(container, vi.fn())
 
+    // First click shows inline confirmation.
     const deleteBtn = container.querySelector(
       '.btn-danger',
     ) as HTMLButtonElement
     deleteBtn.click()
+
+    // Second click on the Confirm button actually deletes.
+    const confirmBtn = container.querySelector(
+      '.btn-danger',
+    ) as HTMLButtonElement
+    confirmBtn.click()
 
     // Wait for async deletion and re-render.
     await vi.waitFor(() => {
@@ -151,22 +153,27 @@ describe('renderHistoryView', () => {
       reason: 'office',
     })
 
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => false),
-    )
-
     const container = getContainer()
     await renderHistoryView(container, vi.fn())
 
+    // Click Delete to show inline confirmation.
     const deleteBtn = container.querySelector(
       '.btn-danger',
     ) as HTMLButtonElement
     deleteBtn.click()
 
+    // Click Cancel to dismiss.
+    const buttons = Array.from(container.querySelectorAll('button'))
+    const cancelBtn = buttons.find((b) => b.textContent === 'Cancel')!
+    cancelBtn.click()
+
     // Entry should still be there.
     const all = await entries.loadAllEntries()
     expect(all).toHaveLength(1)
+
+    // Edit and Delete buttons should be restored.
+    expect(container.querySelector('.btn-small:not(.btn-danger)')).toBeTruthy()
+    expect(container.querySelector('.btn-danger')).toBeTruthy()
   })
 
   it('falls back to raw reason string for unknown reasons', async () => {

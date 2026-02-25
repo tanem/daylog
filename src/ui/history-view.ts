@@ -35,13 +35,15 @@ const entryItem = (
   onEdit: (entry: AttendanceEntry) => void,
   onDeleted: () => void,
 ): HTMLElement => {
+  const dateLabel = formatDate(entry.date)
+
   const li = el(
     'li',
     { class: 'entry-item' },
     el(
       'div',
       { class: 'entry-summary' },
-      el('span', { class: 'entry-date' }, formatDate(entry.date)),
+      el('span', { class: 'entry-date' }, dateLabel),
       el(
         'span',
         { class: `entry-reason entry-reason--${entry.reason}` },
@@ -56,19 +58,44 @@ const entryItem = (
 
   const actions = el('div', { class: 'entry-actions' })
 
-  const editBtn = el('button', { class: 'btn btn-small' }, 'Edit')
+  const editBtn = el(
+    'button',
+    {
+      class: 'btn btn-small',
+      'aria-label': `Edit entry for ${dateLabel}`,
+    },
+    'Edit',
+  )
   editBtn.addEventListener('click', () => onEdit(entry))
 
   const deleteBtn = el(
     'button',
-    { class: 'btn btn-small btn-danger' },
+    {
+      class: 'btn btn-small btn-danger',
+      'aria-label': `Delete entry for ${dateLabel}`,
+    },
     'Delete',
   )
-  deleteBtn.addEventListener('click', async () => {
-    if (confirm('Delete this entry? This cannot be undone.')) {
+  deleteBtn.addEventListener('click', () => {
+    const prompt = el('span', { class: 'confirm-prompt' }, 'Delete?')
+    const confirmBtn = el(
+      'button',
+      { class: 'btn btn-small btn-danger' },
+      'Confirm',
+    )
+    const cancelBtn = el('button', { class: 'btn btn-small' }, 'Cancel')
+
+    confirmBtn.addEventListener('click', async () => {
       await removeEntry(entry.id)
       onDeleted()
-    }
+    })
+
+    cancelBtn.addEventListener('click', () => {
+      actions.replaceChildren(editBtn, deleteBtn)
+    })
+
+    actions.replaceChildren(prompt, confirmBtn, cancelBtn)
+    confirmBtn.focus()
   })
 
   actions.append(editBtn, deleteBtn)
@@ -89,9 +116,16 @@ const reasonLabel = (reason: string): string => {
 }
 
 // Re-render the view after a deletion.
-const refresh = (
+const refresh = async (
   container: HTMLElement,
   onEdit: (entry: AttendanceEntry) => void,
-): void => {
-  renderHistoryView(container, onEdit)
+): Promise<void> => {
+  await renderHistoryView(container, onEdit)
+  // Focus the heading so screen readers announce the updated view.
+  const h = container.querySelector('h2')
+  /* v8 ignore start */
+  if (!h) return
+  /* v8 ignore stop */
+  h.setAttribute('tabindex', '-1')
+  h.focus()
 }

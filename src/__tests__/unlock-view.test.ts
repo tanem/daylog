@@ -13,6 +13,11 @@ beforeEach(async () => {
 
 const getContainer = (): HTMLElement => document.createElement('div')
 
+const submitForm = (container: HTMLElement): void => {
+  const form = container.querySelector('form') as HTMLFormElement
+  form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+}
+
 describe('renderUnlockView', () => {
   it('renders heading, PIN input, and unlock button', () => {
     const container = getContainer()
@@ -29,8 +34,7 @@ describe('renderUnlockView', () => {
     const container = getContainer()
     renderUnlockView(container, vi.fn())
 
-    const btn = container.querySelector('.btn.btn-primary') as HTMLButtonElement
-    btn.click()
+    submitForm(container)
 
     await vi.waitFor(() => {
       expect(container.querySelector('.pin-message')!.textContent).toBe(
@@ -46,8 +50,7 @@ describe('renderUnlockView', () => {
     const pinInput = container.querySelector('#unlock-pin') as HTMLInputElement
     pinInput.value = 'wrong-pin'
 
-    const btn = container.querySelector('.btn.btn-primary') as HTMLButtonElement
-    btn.click()
+    submitForm(container)
 
     await vi.waitFor(() => {
       expect(container.querySelector('.pin-message')!.textContent).toBe(
@@ -68,15 +71,14 @@ describe('renderUnlockView', () => {
     const pinInput = container.querySelector('#unlock-pin') as HTMLInputElement
     pinInput.value = 'correct-pin'
 
-    const btn = container.querySelector('.btn.btn-primary') as HTMLButtonElement
-    btn.click()
+    submitForm(container)
 
     await vi.waitFor(() => {
       expect(onUnlocked).toHaveBeenCalledOnce()
     })
   })
 
-  it('supports Enter key to trigger unlock', async () => {
+  it('supports form submission to trigger unlock', async () => {
     await enc.enableEncryption('mypin456')
     enc.lock()
 
@@ -87,16 +89,14 @@ describe('renderUnlockView', () => {
     const pinInput = container.querySelector('#unlock-pin') as HTMLInputElement
     pinInput.value = 'mypin456'
 
-    pinInput.dispatchEvent(
-      new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }),
-    )
+    submitForm(container)
 
     await vi.waitFor(() => {
       expect(onUnlocked).toHaveBeenCalledOnce()
     })
   })
 
-  it('does not trigger unlock on non-Enter key', () => {
+  it('does not unlock without form submission', () => {
     const container = getContainer()
     const onUnlocked = vi.fn()
     renderUnlockView(container, onUnlocked)
@@ -104,12 +104,7 @@ describe('renderUnlockView', () => {
     const pinInput = container.querySelector('#unlock-pin') as HTMLInputElement
     pinInput.value = 'something'
 
-    pinInput.dispatchEvent(
-      new KeyboardEvent('keydown', { bubbles: true, key: 'a' }),
-    )
-
-    // onUnlocked should not have been called (no Enter).
-    // The button click handler might fire but that is a separate path.
+    // Typing alone should not trigger unlock.
     expect(onUnlocked).not.toHaveBeenCalled()
   })
 })

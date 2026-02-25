@@ -16,6 +16,7 @@ const setupDOM = (): void => {
     const btn = document.createElement('button')
     btn.dataset.view = view
     btn.className = `nav-btn${view === 'log' ? ' active' : ''}`
+    if (view === 'log') btn.setAttribute('aria-current', 'page')
     btn.textContent = view.charAt(0).toUpperCase() + view.slice(1)
     nav.appendChild(btn)
   }
@@ -24,6 +25,7 @@ const setupDOM = (): void => {
 
   const main = document.createElement('main')
   main.id = 'main-content'
+  main.setAttribute('tabindex', '-1')
   app.appendChild(main)
 
   document.body.appendChild(app)
@@ -115,13 +117,11 @@ describe('main navigation', () => {
       expect(getMain().querySelector('#unlock-pin')).toBeTruthy()
     })
 
-    // Simulate unlock.
+    // Simulate unlock via form submission.
     const pinInput = getMain().querySelector('#unlock-pin') as HTMLInputElement
     pinInput.value = 'testpin2'
-    const unlockBtn = getMain().querySelector(
-      '.btn.btn-primary',
-    ) as HTMLButtonElement
-    unlockBtn.click()
+    const form = getMain().querySelector('form') as HTMLFormElement
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
 
     await vi.waitFor(() => {
       expect(getMain().querySelector('h2')!.textContent).toBe('Log attendance')
@@ -178,11 +178,6 @@ describe('main navigation', () => {
   })
 
   it('navigates to log after wiping data from settings', async () => {
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => true),
-    )
-
     await import('../main')
     await vi.waitFor(() => {
       expect(getMain().querySelector('h2')).toBeTruthy()
@@ -198,14 +193,47 @@ describe('main navigation', () => {
       expect(getMain().querySelector('h2')!.textContent).toBe('Settings')
     })
 
-    // Click delete all data.
-    const deleteBtn = getMain().querySelector(
-      '.btn-danger',
-    ) as HTMLButtonElement
-    deleteBtn.click()
+    // Type "delete" in the confirmation input, then submit the form.
+    const confirmInput = getMain().querySelector(
+      '#delete-confirm',
+    ) as HTMLInputElement
+    confirmInput.value = 'delete'
+
+    const deleteForm = confirmInput.closest('form') as HTMLFormElement
+    deleteForm.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    )
 
     await vi.waitFor(() => {
       expect(getMain().querySelector('h2')!.textContent).toBe('Log attendance')
     })
+  })
+
+  it('shows unlock view when auto-lock triggers', async () => {
+    const enc = await import('../crypto')
+    await enc.enableEncryption('testpin3')
+
+    vi.resetModules()
+    setupDOM()
+
+    // Re-import crypto to unlock the session in the fresh module.
+    const freshEnc = await import('../crypto')
+    await freshEnc.unlock('testpin3')
+
+    // Import main (boots with encryption enabled and unlocked).
+    await import('../main')
+    await vi.waitFor(() => {
+      expect(getMain().querySelector('h2')!.textContent).toBe('Log attendance')
+    })
+
+    // Simulate auto-lock via visibilitychange.
+    Object.defineProperty(document, 'hidden', { value: true, writable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    await vi.waitFor(() => {
+      expect(getMain().querySelector('h2')!.textContent).toBe('Unlock Daylog')
+    })
+
+    Object.defineProperty(document, 'hidden', { value: false, writable: true })
   })
 })

@@ -4,7 +4,7 @@ import type { AttendanceEntry, Reason } from '../types'
 import { calculateAttendance } from '../attendance'
 import { loadAllEntries, saveEntry } from '../entries'
 import { loadAttendanceSettings } from '../settings'
-import { el, todayISO } from './helpers'
+import { el, fieldGroup, isValidDate, todayISO } from './helpers'
 
 const REASONS: { label: string; value: Reason }[] = [
   { label: 'Office', value: 'office' },
@@ -38,7 +38,16 @@ const buildBanner = (
     { class: 'attendance-detail' },
     `${attended} of ${total} days in office (last ${weeks} weeks, target ${target}%)`,
   )
-  return el('div', { class: 'attendance-banner' }, pctEl, detailEl)
+  return el(
+    'div',
+    {
+      class: 'attendance-banner',
+      role: 'status',
+      'aria-label': 'Attendance summary',
+    },
+    pctEl,
+    detailEl,
+  )
 }
 
 // Render the log form into the given container.
@@ -87,17 +96,25 @@ export const renderLogView = async (
     existing ? 'Update' : 'Save',
   )
 
+  const formMsg = el('p', { class: 'form-message', 'aria-live': 'assertive' })
+
   const form = el('form', { class: 'log-form' })
   form.append(
     fieldGroup('Date', dateInput),
     fieldGroup('Reason', reasonSelect),
     fieldGroup('Notes', notesInput),
     submitBtn,
+    formMsg,
   )
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     const date = dateInput.value
+    if (!isValidDate(date)) {
+      formMsg.textContent = 'Please enter a valid date.'
+      return
+    }
+    formMsg.textContent = ''
     const reason = reasonSelect.value as Reason
     const notes = notesInput.value.trim() || undefined
 
@@ -131,10 +148,4 @@ export const renderLogView = async (
 
   children.push(form)
   container.replaceChildren(...children)
-}
-
-const fieldGroup = (label: string, input: HTMLElement): HTMLElement => {
-  const wrapper = el('div', { class: 'field-group' })
-  wrapper.append(el('label', {}, label), input)
-  return wrapper
 }

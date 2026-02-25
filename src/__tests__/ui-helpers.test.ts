@@ -1,7 +1,14 @@
 // Unit tests for UI helper functions.
 
 import { describe, expect, it, vi } from 'vitest'
-import { el, formatDate, render, todayISO } from '../ui/helpers'
+import {
+  el,
+  fieldGroup,
+  formatDate,
+  isValidDate,
+  render,
+  todayISO,
+} from '../ui/helpers'
 
 describe('el', () => {
   it('creates an element with the given tag', () => {
@@ -75,6 +82,27 @@ describe('formatDate', () => {
   })
 })
 
+describe('fieldGroup', () => {
+  it('sets for attribute when input has an id', () => {
+    const input = el('input', { id: 'my-field', type: 'text' })
+    const group = fieldGroup('My label', input)
+
+    const label = group.querySelector('label')!
+    expect(label.textContent).toBe('My label')
+    expect(label.getAttribute('for')).toBe('my-field')
+    expect(group.classList.contains('field-group')).toBe(true)
+    expect(group.contains(input)).toBe(true)
+  })
+
+  it('omits for attribute when input has no id', () => {
+    const input = el('input', { type: 'text' })
+    const group = fieldGroup('No id', input)
+
+    const label = group.querySelector('label')!
+    expect(label.getAttribute('for')).toBeNull()
+  })
+})
+
 describe('todayISO', () => {
   it('returns today in YYYY-MM-DD format', () => {
     const result = todayISO()
@@ -89,5 +117,37 @@ describe('todayISO', () => {
     expect(result).toBe('2026-06-15')
 
     vi.useRealTimers()
+  })
+})
+
+describe('isValidDate', () => {
+  it('accepts a valid date', () => {
+    expect(isValidDate('2026-02-20')).toBe(true)
+  })
+
+  it('accepts leap day in a leap year', () => {
+    expect(isValidDate('2024-02-29')).toBe(true)
+  })
+
+  it('rejects wrong format', () => {
+    expect(isValidDate('20-02-2026')).toBe(false)
+    expect(isValidDate('2026/02/20')).toBe(false)
+    expect(isValidDate('not-a-date')).toBe(false)
+  })
+
+  it('rejects invalid calendar date (e.g. Feb 30)', () => {
+    expect(isValidDate('2026-02-30')).toBe(false)
+  })
+
+  it('rejects leap day in a non-leap year', () => {
+    expect(isValidDate('2025-02-29')).toBe(false)
+  })
+
+  it('rejects empty string', () => {
+    expect(isValidDate('')).toBe(false)
+  })
+
+  it('rejects a date that matches the pattern but produces NaN', () => {
+    expect(isValidDate('0000-00-00')).toBe(false)
   })
 })

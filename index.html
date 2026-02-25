@@ -8,21 +8,25 @@
       name="description"
       content="Log your daily work attendance. All data stays on your device."
     />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <!--csp-meta-->
     <title>Daylog</title>
   </head>
   <body>
+    <a href="#main-content" class="skip-link">Skip to content</a>
     <div id="app">
       <header>
         <h1>Daylog</h1>
-        <nav id="main-nav">
-          <button data-view="log" class="nav-btn active">Log</button>
+        <nav id="main-nav" aria-label="Main">
+          <button data-view="log" class="nav-btn active" aria-current="page">
+            Log
+          </button>
           <button data-view="history" class="nav-btn">History</button>
           <button data-view="settings" class="nav-btn">Settings</button>
         </nav>
       </header>
-      <main id="main-content"></main>
+      <main id="main-content" tabindex="-1"></main>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

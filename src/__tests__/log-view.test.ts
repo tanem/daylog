@@ -254,3 +254,56 @@ describe('attendance banner', () => {
     expect(pct.classList.contains('attendance-ok')).toBe(false)
   })
 })
+
+describe('date validation', () => {
+  it('rejects an invalid date and shows error message', async () => {
+    const container = getContainer()
+    const onSaved = vi.fn()
+    await renderLogView(container, onSaved)
+
+    const dateInput = container.querySelector(
+      'input[type="date"]',
+    ) as HTMLInputElement
+    dateInput.value = '2026-02-30'
+
+    const form = container.querySelector('form') as HTMLFormElement
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+
+    await vi.waitFor(() => {
+      const msg = container.querySelector('.form-message')
+      expect(msg).toBeTruthy()
+      expect(msg!.textContent).toBe('Please enter a valid date.')
+    })
+
+    expect(onSaved).not.toHaveBeenCalled()
+  })
+
+  it('clears error message on successful save', async () => {
+    const container = getContainer()
+    const onSaved = vi.fn()
+    await renderLogView(container, onSaved)
+
+    const dateInput = container.querySelector(
+      'input[type="date"]',
+    ) as HTMLInputElement
+
+    // First submit invalid.
+    dateInput.value = '2026-02-30'
+    const form = container.querySelector('form') as HTMLFormElement
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+
+    await vi.waitFor(() => {
+      expect(container.querySelector('.form-message')!.textContent).toBe(
+        'Please enter a valid date.',
+      )
+    })
+
+    // Then submit valid.
+    dateInput.value = '2026-02-20'
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+
+    await vi.waitFor(() => {
+      expect(onSaved).toHaveBeenCalledOnce()
+    })
+  })
+})

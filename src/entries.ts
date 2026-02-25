@@ -1,5 +1,5 @@
 // Mediator between the UI and the storage/crypto layers.
-// Handles encrypting and decrypting transparently.
+// Handles encrypting, decrypting, and migrating entries transparently.
 
 import type { AttendanceEntry, EncryptedEnvelope } from './types'
 import * as db from './db'
@@ -48,4 +48,36 @@ export const removeEntry = async (id: string): Promise<void> => {
 
 export const wipeAllData = async (): Promise<void> => {
   await db.deleteAllData()
+}
+
+// Encrypt any plaintext entries still in the store.
+// Called after enableEncryption to migrate existing data.
+export const migrateEntriesToEncrypted = async (): Promise<void> => {
+  const raw = await db.getAllEntries()
+  for (const item of raw) {
+    if (!('ciphertext' in item)) {
+      const envelope = await enc.encryptEntry(item as AttendanceEntry)
+      await db.putEntry(envelope)
+    }
+  }
+}
+
+// Change the encryption PIN. Session must be unlocked with the current PIN.
+// Decrypts all entries with the old key, re-keys, then re-encrypts everything.
+export const changeEncryptionPin = async (newPin: string): Promise<void> => {
+  const plainEntries = await loadAllEntries()
+  await enc.changePin(newPin)
+  for (const entry of plainEntries) {
+    const envelope = await enc.encryptEntry(entry)
+    await db.putEntry(envelope)
+  }
+}
+
+// Disable encryption: decrypt all entries and store as plaintext, then clear meta.
+export const disableEncryption = async (): Promise<void> => {
+  const plainEntries = await loadAllEntries()
+  await enc.clearEncryptionMeta()
+  for (const entry of plainEntries) {
+    await db.putEntry(entry)
+  }
 }
