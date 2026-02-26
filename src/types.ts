@@ -2,6 +2,15 @@
 
 export type Reason = 'office' | 'wfh' | 'leave' | 'sick' | 'public-holiday'
 
+// Display labels for each reason type.
+export const REASON_LABELS: Record<Reason, { label: string; short: string }> = {
+  office: { label: 'Office', short: 'Office' },
+  wfh: { label: 'Working from home', short: 'WFH' },
+  leave: { label: 'Leave', short: 'Leave' },
+  sick: { label: 'Sick', short: 'Sick' },
+  'public-holiday': { label: 'Public holiday', short: 'Holiday' },
+}
+
 export interface AttendanceEntry {
   id: string
   date: string // ISO date e.g. "2026-02-22".

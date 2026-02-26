@@ -1,5 +1,7 @@
-// IndexedDB access layer.
+// IndexedDB access layer. Uses idb for a promise-based API.
 
+import { openDB } from 'idb'
+import type { DBSchema, IDBPDatabase } from 'idb'
 import type {
   AttendanceEntry,
   AttendanceSettings,
@@ -9,144 +11,85 @@ import type {
 
 const DB_NAME = 'daylog'
 const DB_VERSION = 1
-const ENTRIES_STORE = 'entries'
-const META_STORE = 'meta'
 
-let dbInstance: IDBDatabase | null = null
-
-// Open (or create) the database and return a reference.
-const openDb = (): Promise<IDBDatabase> => {
-  if (dbInstance) return Promise.resolve(dbInstance)
-
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onupgradeneeded = () => {
-      const db = request.result
-      /* v8 ignore start */
-      if (!db.objectStoreNames.contains(ENTRIES_STORE)) {
-        db.createObjectStore(ENTRIES_STORE, { keyPath: 'id' })
-      }
-      if (!db.objectStoreNames.contains(META_STORE)) {
-        db.createObjectStore(META_STORE, { keyPath: 'key' })
-      }
-      /* v8 ignore stop */
-    }
-
-    request.onsuccess = () => {
-      dbInstance = request.result
-      resolve(dbInstance)
-    }
-
-    /* v8 ignore start */
-    request.onerror = () => reject(request.error)
-    /* v8 ignore stop */
-  })
+interface DaylogSchema extends DBSchema {
+  entries: {
+    key: string
+    value: AttendanceEntry | EncryptedEnvelope
+  }
+  meta: {
+    key: string
+    value: { key: string } & Record<string, unknown>
+  }
 }
 
-// Generic helper to run a single-store transaction.
-const tx = (
-  storeName: string,
-  mode: IDBTransactionMode,
-): Promise<IDBObjectStore> =>
-  openDb().then((db) => {
-    const transaction = db.transaction(storeName, mode)
-    return transaction.objectStore(storeName)
+let dbInstance: IDBPDatabase<DaylogSchema> | null = null
+
+const getDb = async (): Promise<IDBPDatabase<DaylogSchema>> => {
+  if (dbInstance) return dbInstance
+
+  dbInstance = await openDB<DaylogSchema>(DB_NAME, DB_VERSION, {
+    upgrade(db) {
+      /* v8 ignore start */
+      if (!db.objectStoreNames.contains('entries')) {
+        db.createObjectStore('entries', { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains('meta')) {
+        db.createObjectStore('meta', { keyPath: 'key' })
+      }
+      /* v8 ignore stop */
+    },
   })
+
+  return dbInstance
+}
 
 // ---------- Entries ----------
 
 export const putEntry = async (
   entry: AttendanceEntry | EncryptedEnvelope,
 ): Promise<void> => {
-  const store = await tx(ENTRIES_STORE, 'readwrite')
-  return new Promise((resolve, reject) => {
-    const req = store.put(entry)
-    req.onsuccess = () => resolve()
-    /* v8 ignore start */
-    req.onerror = () => reject(req.error)
-    /* v8 ignore stop */
-  })
+  const db = await getDb()
+  await db.put('entries', entry)
 }
 
 export const getEntry = async (
   id: string,
 ): Promise<AttendanceEntry | EncryptedEnvelope | undefined> => {
-  const store = await tx(ENTRIES_STORE, 'readonly')
-  return new Promise((resolve, reject) => {
-    const req = store.get(id)
-    req.onsuccess = () => resolve(req.result ?? undefined)
-    /* v8 ignore start */
-    req.onerror = () => reject(req.error)
-    /* v8 ignore stop */
-  })
+  const db = await getDb()
+  return db.get('entries', id)
 }
 
 export const getAllEntries = async (): Promise<
   (AttendanceEntry | EncryptedEnvelope)[]
 > => {
-  const store = await tx(ENTRIES_STORE, 'readonly')
-  return new Promise((resolve, reject) => {
-    const req = store.getAll()
-    req.onsuccess = () => resolve(req.result)
-    /* v8 ignore start */
-    req.onerror = () => reject(req.error)
-    /* v8 ignore stop */
-  })
+  const db = await getDb()
+  return db.getAll('entries')
 }
 
 export const deleteEntry = async (id: string): Promise<void> => {
-  const store = await tx(ENTRIES_STORE, 'readwrite')
-  return new Promise((resolve, reject) => {
-    const req = store.delete(id)
-    req.onsuccess = () => resolve()
-    /* v8 ignore start */
-    req.onerror = () => reject(req.error)
-    /* v8 ignore stop */
-  })
+  const db = await getDb()
+  await db.delete('entries', id)
 }
 
 export const clearAllEntries = async (): Promise<void> => {
-  const store = await tx(ENTRIES_STORE, 'readwrite')
-  return new Promise((resolve, reject) => {
-    const req = store.clear()
-    req.onsuccess = () => resolve()
-    /* v8 ignore start */
-    req.onerror = () => reject(req.error)
-    /* v8 ignore stop */
-  })
+  const db = await getDb()
+  await db.clear('entries')
 }
 
 // ---------- Encryption meta ----------
 
 export const getEncryptionMeta = async (): Promise<EncryptionMeta> => {
-  const store = await tx(META_STORE, 'readonly')
-  return new Promise((resolve, reject) => {
-    const req = store.get('encryption')
-    req.onsuccess = () => {
-      if (req.result) {
-        resolve(req.result as EncryptionMeta)
-      } else {
-        resolve({ enabled: false })
-      }
-    }
-    /* v8 ignore start */
-    req.onerror = () => reject(req.error)
-    /* v8 ignore stop */
-  })
+  const db = await getDb()
+  const result = await db.get('meta', 'encryption')
+  return result ? (result as unknown as EncryptionMeta) : { enabled: false }
 }
 
 export const setEncryptionMeta = async (
   meta: EncryptionMeta,
 ): Promise<void> => {
-  const store = await tx(META_STORE, 'readwrite')
-  return new Promise((resolve, reject) => {
-    const req = store.put({ key: 'encryption', ...meta })
-    req.onsuccess = () => resolve()
-    /* v8 ignore start */
-    req.onerror = () => reject(req.error)
-    /* v8 ignore stop */
-  })
+  const db = await getDb()
+  await db.put('meta', { key: 'encryption', ...meta })
 }
 
 // ---------- Attendance settings ----------
@@ -158,53 +101,30 @@ const DEFAULT_ATTENDANCE: AttendanceSettings = {
 }
 
 export const getAttendanceSettings = async (): Promise<AttendanceSettings> => {
-  const store = await tx(META_STORE, 'readonly')
-  return new Promise((resolve, reject) => {
-    const req = store.get('attendance')
-    req.onsuccess = () => {
-      if (req.result) {
-        const raw = req.result as AttendanceSettings & { key: string }
-        resolve({
-          enabled: raw.enabled,
-          weeks: raw.weeks,
-          percentage: raw.percentage,
-        })
-      } else {
-        resolve({ ...DEFAULT_ATTENDANCE })
-      }
-    }
-    /* v8 ignore start */
-    req.onerror = () => reject(req.error)
-    /* v8 ignore stop */
-  })
+  const db = await getDb()
+  const result = await db.get('meta', 'attendance')
+  if (!result) return { ...DEFAULT_ATTENDANCE }
+  const raw = result as unknown as AttendanceSettings & { key: string }
+  return { enabled: raw.enabled, weeks: raw.weeks, percentage: raw.percentage }
 }
 
 export const setAttendanceSettings = async (
   settings: AttendanceSettings,
 ): Promise<void> => {
-  const store = await tx(META_STORE, 'readwrite')
-  return new Promise((resolve, reject) => {
-    const req = store.put({ key: 'attendance', ...settings })
-    req.onsuccess = () => resolve()
-    /* v8 ignore start */
-    req.onerror = () => reject(req.error)
-    /* v8 ignore stop */
-  })
+  const db = await getDb()
+  await db.put('meta', { key: 'attendance', ...settings })
 }
 
 // ---------- Full wipe ----------
 
 export const deleteAllData = async (): Promise<void> => {
-  const db = await openDb()
-  const storeNames = Array.from(db.objectStoreNames)
-  const transaction = db.transaction(storeNames, 'readwrite')
-  for (const name of storeNames) {
-    transaction.objectStore(name).clear()
+  const db = await getDb()
+  const tx = db.transaction(
+    Array.from(db.objectStoreNames) as ('entries' | 'meta')[],
+    'readwrite',
+  )
+  for (const name of tx.objectStoreNames) {
+    tx.objectStore(name).clear()
   }
-  return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => resolve()
-    /* v8 ignore start */
-    transaction.onerror = () => reject(transaction.error)
-    /* v8 ignore stop */
-  })
+  await tx.done
 }

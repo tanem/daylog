@@ -45,7 +45,7 @@ npm run format    # Prettier
 
 ## Tech decisions
 
-- **Zero runtime dependencies.** Vanilla TypeScript, DOM APIs, no frameworks.
+- **Minimal runtime dependencies.** Vanilla TypeScript, DOM APIs, no frameworks. The only production dependency is [htm](https://github.com/developit/htm) (~0.7 kB gzipped), a tagged-template parser used for readable DOM construction.
 - **IndexedDB** for on-device storage. No backend, no network requests.
 - **AES-GCM encryption** (optional) derived from a user-set PIN via PBKDF2 (600k iterations). Auto-locks after inactivity or when backgrounded.
 - **Vite** for development and builds, with `vite-plugin-pwa` for service worker generation.

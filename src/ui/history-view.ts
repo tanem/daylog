@@ -1,33 +1,40 @@
 // History view: list of past entries with edit and delete actions.
 
 import type { AttendanceEntry } from '../types'
+import { REASON_LABELS } from '../types'
 import { loadAllEntries, removeEntry } from '../entries'
-import { el, formatDate } from './helpers'
+import { formatDate } from '../date-utils'
+import { html, htmlList } from './html'
 
 // Render the history list into the given container.
 export const renderHistoryView = async (
   container: HTMLElement,
   onEdit: (entry: AttendanceEntry) => void,
 ): Promise<void> => {
-  const heading = el('h2', {}, 'History')
   const entries = await loadAllEntries()
 
   if (entries.length === 0) {
     container.replaceChildren(
-      heading,
-      el('p', { class: 'empty-state' }, 'No entries yet. Log your first day!'),
+      ...htmlList`
+      <h2>History</h2>
+      <p class="empty-state">No entries yet. Log your first day!</p>
+    `,
     )
     return
   }
 
   entries.sort((a, b) => b.date.localeCompare(a.date))
 
-  const list = el('ul', { class: 'entry-list' })
-  for (const entry of entries) {
-    list.appendChild(entryItem(entry, onEdit, () => refresh(container, onEdit)))
-  }
-
-  container.replaceChildren(heading, list)
+  container.replaceChildren(
+    html`<h2>History</h2>` as HTMLElement,
+    html`
+      <ul class="entry-list">
+        ${entries.map((entry) =>
+          entryItem(entry, onEdit, () => refresh(container, onEdit)),
+        )}
+      </ul>
+    ` as HTMLElement,
+  )
 }
 
 const entryItem = (
@@ -37,83 +44,79 @@ const entryItem = (
 ): HTMLElement => {
   const dateLabel = formatDate(entry.date)
 
-  const li = el(
-    'li',
-    { class: 'entry-item' },
-    el(
-      'div',
-      { class: 'entry-summary' },
-      el('span', { class: 'entry-date' }, dateLabel),
-      el(
-        'span',
-        { class: `entry-reason entry-reason--${entry.reason}` },
-        reasonLabel(entry.reason),
-      ),
-    ),
-  )
+  // Action buttons need references for the delete confirmation swap.
+  const actions = html`<div class="entry-actions"></div>` as HTMLElement
 
-  if (entry.notes) {
-    li.appendChild(el('p', { class: 'entry-notes' }, entry.notes))
+  const editBtn = html`
+    <button
+      class="btn btn-small"
+      aria-label="Edit entry for ${dateLabel}"
+      onclick=${() => onEdit(entry)}
+    >
+      Edit
+    </button>
+  ` as HTMLElement
+
+  const deleteBtn = html`
+    <button
+      class="btn btn-small btn-danger"
+      aria-label="Delete entry for ${dateLabel}"
+      onclick=${() => showConfirm()}
+    >
+      Delete
+    </button>
+  ` as HTMLElement
+
+  const showConfirm = (): void => {
+    const confirmBtn = html`
+      <button class="btn btn-small btn-danger" onclick=${onConfirm}>
+        Confirm
+      </button>
+    ` as HTMLElement
+    const cancelBtn = html`
+      <button class="btn btn-small" onclick=${resetActions}>Cancel</button>
+    ` as HTMLElement
+    actions.replaceChildren(
+      html`<span class="confirm-prompt">Delete?</span>` as HTMLElement,
+      confirmBtn,
+      cancelBtn,
+    )
+    confirmBtn.focus()
   }
 
-  const actions = el('div', { class: 'entry-actions' })
-
-  const editBtn = el(
-    'button',
-    {
-      class: 'btn btn-small',
-      'aria-label': `Edit entry for ${dateLabel}`,
-    },
-    'Edit',
-  )
-  editBtn.addEventListener('click', () => onEdit(entry))
-
-  const deleteBtn = el(
-    'button',
-    {
-      class: 'btn btn-small btn-danger',
-      'aria-label': `Delete entry for ${dateLabel}`,
-    },
-    'Delete',
-  )
-  deleteBtn.addEventListener('click', () => {
-    const prompt = el('span', { class: 'confirm-prompt' }, 'Delete?')
-    const confirmBtn = el(
-      'button',
-      { class: 'btn btn-small btn-danger' },
-      'Confirm',
-    )
-    const cancelBtn = el('button', { class: 'btn btn-small' }, 'Cancel')
-
-    confirmBtn.addEventListener('click', async () => {
+  const onConfirm = async (): Promise<void> => {
+    try {
       await removeEntry(entry.id)
       onDeleted()
-    })
-
-    cancelBtn.addEventListener('click', () => {
-      actions.replaceChildren(editBtn, deleteBtn)
-    })
-
-    actions.replaceChildren(prompt, confirmBtn, cancelBtn)
-    confirmBtn.focus()
-  })
-
-  actions.append(editBtn, deleteBtn)
-  li.appendChild(actions)
-
-  return li
-}
-
-const reasonLabel = (reason: string): string => {
-  const labels: Record<string, string> = {
-    office: 'Office',
-    wfh: 'WFH',
-    leave: 'Leave',
-    sick: 'Sick',
-    'public-holiday': 'Holiday',
+    } catch {
+      /* v8 ignore start */
+      resetActions()
+      /* v8 ignore stop */
+    }
   }
-  return labels[reason] ?? reason
+
+  const resetActions = (): void => {
+    actions.replaceChildren(editBtn, deleteBtn)
+  }
+
+  resetActions()
+
+  return html`
+    <li class="entry-item">
+      <div class="entry-summary">
+        <span class="entry-date">${dateLabel}</span>
+        <span class="entry-reason entry-reason--${entry.reason}">
+          ${reasonLabel(entry.reason)}
+        </span>
+      </div>
+      ${entry.notes ? html`<p class="entry-notes">${entry.notes}</p>` : null}
+      ${actions}
+    </li>
+  ` as HTMLElement
 }
+
+const reasonLabel = (reason: string): string =>
+  REASON_LABELS[reason as keyof typeof REASON_LABELS]?.short ?? reason
 
 // Re-render the view after a deletion.
 const refresh = async (

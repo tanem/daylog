@@ -1,18 +1,13 @@
 // Log view: form to add or edit an attendance entry.
 
 import type { AttendanceEntry, Reason } from '../types'
+import { REASON_LABELS } from '../types'
 import { calculateAttendance } from '../attendance'
 import { loadAllEntries, saveEntry } from '../entries'
 import { loadAttendanceSettings } from '../settings'
-import { el, fieldGroup, isValidDate, todayISO } from './helpers'
-
-const REASONS: { label: string; value: Reason }[] = [
-  { label: 'Office', value: 'office' },
-  { label: 'Working from home', value: 'wfh' },
-  { label: 'Leave', value: 'leave' },
-  { label: 'Sick', value: 'sick' },
-  { label: 'Public holiday', value: 'public-holiday' },
-]
+import { isValidDate, todayISO } from '../date-utils'
+import { fieldGroup } from './field-group'
+import { html } from './html'
 
 const DEFAULT_PLACEHOLDER = 'Optional notes…'
 const WFH_PLACEHOLDER = 'Reason for working from home…'
@@ -26,28 +21,25 @@ const buildBanner = (
   weeks: number,
 ): HTMLElement => {
   const ok = percentage >= target
-  const pctEl = el(
-    'div',
-    {
-      class: `attendance-percentage ${ok ? 'attendance-ok' : 'attendance-below'}`,
-    },
-    `${percentage}%`,
-  )
-  const detailEl = el(
-    'div',
-    { class: 'attendance-detail' },
-    `${attended} of ${total} days in office (last ${weeks} weeks, target ${target}%)`,
-  )
-  return el(
-    'div',
-    {
-      class: 'attendance-banner',
-      role: 'status',
-      'aria-label': 'Attendance summary',
-    },
-    pctEl,
-    detailEl,
-  )
+  return html`
+    <div
+      class="attendance-banner"
+      role="status"
+      aria-label="Attendance summary"
+    >
+      <div
+        class="attendance-percentage ${ok
+          ? 'attendance-ok'
+          : 'attendance-below'}"
+      >
+        ${percentage}%
+      </div>
+      <div class="attendance-detail">
+        ${attended} of ${total} days in office (last ${weeks} weeks, target
+        ${target}%)
+      </div>
+    </div>
+  ` as HTMLElement
 }
 
 // Render the log form into the given container.
@@ -57,30 +49,33 @@ export const renderLogView = async (
   onSaved: () => void,
   existing?: AttendanceEntry,
 ): Promise<void> => {
-  const heading = el('h2', {}, existing ? 'Edit entry' : 'Log attendance')
+  const heading = existing ? 'Edit entry' : 'Log attendance'
 
-  const dateInput = el('input', {
-    id: 'entry-date',
-    type: 'date',
-    value: existing?.date ?? todayISO(),
-  })
+  const dateInput = html`
+    <input id="entry-date" type="date" value=${existing?.date ?? todayISO()} />
+  ` as HTMLInputElement
 
-  const reasonSelect = el('select', { id: 'entry-reason' })
-  for (const r of REASONS) {
-    const opt = el('option', { value: r.value }, r.label)
-    if (existing?.reason === r.value) {
-      opt.selected = true
-    }
-    reasonSelect.appendChild(opt)
-  }
+  const reasonSelect = html`
+    <select id="entry-reason">
+      ${Object.entries(REASON_LABELS).map(
+        ([value, { label }]) =>
+          html`<option value=${value} selected=${existing?.reason === value}>
+            ${label}
+          </option>`,
+      )}
+    </select>
+  ` as HTMLSelectElement
 
   const initialReason = existing?.reason ?? 'office'
-  const notesInput = el('textarea', {
-    id: 'entry-notes',
-    placeholder:
-      initialReason === 'wfh' ? WFH_PLACEHOLDER : DEFAULT_PLACEHOLDER,
-    rows: '3',
-  })
+  const notesInput = html`
+    <textarea
+      id="entry-notes"
+      placeholder=${initialReason === 'wfh'
+        ? WFH_PLACEHOLDER
+        : DEFAULT_PLACEHOLDER}
+      rows="3"
+    />
+  ` as HTMLTextAreaElement
   if (existing?.notes) {
     notesInput.value = existing.notes
   }
@@ -90,24 +85,12 @@ export const renderLogView = async (
       reasonSelect.value === 'wfh' ? WFH_PLACEHOLDER : DEFAULT_PLACEHOLDER
   })
 
-  const submitBtn = el(
-    'button',
-    { class: 'btn btn-primary', type: 'submit' },
-    existing ? 'Update' : 'Save',
-  )
+  const formMsg = html`<p
+    class="form-message"
+    aria-live="assertive"
+  ></p>` as HTMLElement
 
-  const formMsg = el('p', { class: 'form-message', 'aria-live': 'assertive' })
-
-  const form = el('form', { class: 'log-form' })
-  form.append(
-    fieldGroup('Date', dateInput),
-    fieldGroup('Reason', reasonSelect),
-    fieldGroup('Notes', notesInput),
-    submitBtn,
-    formMsg,
-  )
-
-  form.addEventListener('submit', async (e) => {
+  const onSubmit = async (e: Event): Promise<void> => {
     e.preventDefault()
     const date = dateInput.value
     if (!isValidDate(date)) {
@@ -118,19 +101,24 @@ export const renderLogView = async (
     const reason = reasonSelect.value as Reason
     const notes = notesInput.value.trim() || undefined
 
-    await saveEntry({
-      id: existing?.id,
-      date,
-      reason,
-      notes,
-    })
-
-    onSaved()
-  })
+    try {
+      await saveEntry({
+        id: existing?.id,
+        date,
+        reason,
+        notes,
+      })
+      onSaved()
+    } catch {
+      /* v8 ignore start */
+      formMsg.textContent = 'Failed to save entry. Please try again.'
+      /* v8 ignore stop */
+    }
+  }
 
   // Attendance banner (only when tracking is enabled).
   const settings = await loadAttendanceSettings()
-  const children: HTMLElement[] = [heading]
+  const children: (HTMLElement | string)[] = []
 
   if (settings.enabled) {
     const allEntries = await loadAllEntries()
@@ -146,6 +134,18 @@ export const renderLogView = async (
     )
   }
 
-  children.push(form)
-  container.replaceChildren(...children)
+  container.replaceChildren(
+    html`<h2>${heading}</h2>` as HTMLElement,
+    ...children,
+    html`
+      <form class="log-form" onsubmit=${onSubmit}>
+        ${fieldGroup('Date', dateInput)} ${fieldGroup('Reason', reasonSelect)}
+        ${fieldGroup('Notes', notesInput)}
+        <button class="btn btn-primary" type="submit">
+          ${existing ? 'Update' : 'Save'}
+        </button>
+        ${formMsg}
+      </form>
+    ` as HTMLElement,
+  )
 }

@@ -20,15 +20,19 @@ Keep these instructions minimal: only rules and constraints an agent cannot infe
 
 ## Hard rules
 
-- Zero runtime dependencies. Do not add npm packages.
+- Minimal runtime dependencies. Only add a production dep when it eliminates significant boilerplate around a browser API with poor ergonomics (e.g. `idb` for IndexedDB, `htm` for DOM construction). Justify each addition.
 - No frameworks. Vanilla TypeScript + DOM APIs only.
 - Named exports only. Never use `export default`.
-- Never use `innerHTML`. Build DOM with `el()` from `src/ui/helpers.ts` and swap content via `container.replaceChildren(...)`.
+- Never use `innerHTML`. Build DOM with `html` tagged templates from `src/ui/html.ts` (backed by [htm](https://github.com/developit/htm)) and swap content via `container.replaceChildren(...)`. Use `fieldGroup()` from `src/ui/field-group.ts` for labelled form inputs: prefer `html` for view-level templates.
+- When a template has a single root, cast the result: `html\`<div>…</div>\` as HTMLElement`. For multi-root templates, use `htmlList` which always returns an array.
+- Inline event handlers in templates use lowercase `on*` attributes: `onclick`, `onsubmit`, etc.
 
 ## Architecture
 
-- `src/entries.ts` and `src/settings.ts` are data mediators: UI code reads/writes through them, never import `src/db.ts` directly (enforced by ESLint).
-- `src/crypto.ts` handles encryption; `entries.ts` applies it transparently.
+- Flat directory structure: new files go alongside siblings, not into new subdirectories. Only `src/ui/` exists as a sub-boundary.
+- One clear purpose per module. Prefer many small files over fewer large ones.
+- `src/entries.ts`, `src/encryption.ts`, and `src/settings.ts` are data mediators: UI code reads/writes through them, never import `src/db.ts` directly (enforced by ESLint).
+- `src/crypto.ts` handles encryption primitives; `src/encryption.ts` handles encryption lifecycle (enable/disable, PIN changes, migration).
 - `src/attendance.ts` is a pure calculator: no side effects, no I/O.
 - UI views are `render*()` functions in `src/ui/` that receive a container and callbacks.
 
@@ -37,7 +41,7 @@ Keep these instructions minimal: only rules and constraints an agent cannot infe
 - The `CryptoKey` (`sessionKey`) is never persisted. It is cleared on lock.
 - Destructive actions use a type-to-confirm pattern (e.g. type "delete") or an inline two-step confirmation (click then confirm). Never use `window.confirm()` or `window.alert()`.
 - Maintain strict CSP in `index.html`. No `unsafe-inline` for scripts or styles.
-- Validate date inputs with `isValidDate()` from `src/ui/helpers.ts` before saving entries.
+- Validate date inputs with `isValidDate()` from `src/date-utils.ts` before saving entries.
 
 ## Conventions
 

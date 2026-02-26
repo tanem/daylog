@@ -1,4 +1,4 @@
-// Integration tests for the data layer: entries.ts, db.ts, crypto.ts.
+// Integration tests for the data layer: entries.ts, encryption.ts, db.ts, crypto.ts.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AttendanceEntry } from '../types'
@@ -7,12 +7,14 @@ import type { AttendanceEntry } from '../types'
 // and sessionKey in crypto.ts.
 let db: typeof import('../db')
 let entries: typeof import('../entries')
+let encryption: typeof import('../encryption')
 let enc: typeof import('../crypto')
 
 beforeEach(async () => {
   vi.resetModules()
   db = await import('../db')
   entries = await import('../entries')
+  encryption = await import('../encryption')
   enc = await import('../crypto')
 })
 
@@ -287,7 +289,7 @@ describe('encryption round-trip', () => {
 
     // Enable encryption and migrate.
     await enc.enableEncryption(PIN)
-    await entries.migrateEntriesToEncrypted()
+    await encryption.migrateEntriesToEncrypted()
 
     // Raw DB entries should now be encrypted.
     const raw = await db.getAllEntries()
@@ -313,7 +315,7 @@ describe('encryption round-trip', () => {
       reason: 'wfh',
     } as AttendanceEntry)
 
-    await entries.migrateEntriesToEncrypted()
+    await encryption.migrateEntriesToEncrypted()
 
     // Both entries should be encrypted.
     const raw = await db.getAllEntries()
@@ -331,7 +333,7 @@ describe('encryption round-trip', () => {
     await entries.saveEntry({ date: '2026-02-20', reason: 'office' })
 
     const newPin = 'newpin456'
-    await entries.changeEncryptionPin(newPin)
+    await encryption.changeEncryptionPin(newPin)
 
     // Old PIN should no longer work.
     enc.lock()
@@ -351,7 +353,7 @@ describe('encryption round-trip', () => {
     await enc.enableEncryption(PIN)
     await entries.saveEntry({ date: '2026-02-20', reason: 'office' })
 
-    await entries.disableEncryption()
+    await encryption.disableEncryption()
 
     // Encryption should be disabled.
     const enabled = await enc.isEncryptionEnabled()

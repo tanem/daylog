@@ -1,46 +1,53 @@
 // PIN unlock screen shown when encryption is enabled.
 
 import { unlock } from '../crypto'
-import { el, fieldGroup } from './helpers'
+import { fieldGroup } from './field-group'
+import { html, htmlList } from './html'
 
 export const renderUnlockView = (
   container: HTMLElement,
   onUnlocked: () => void,
 ): void => {
-  const heading = el('h2', {}, 'Unlock Daylog')
-  const pinInput = el('input', {
-    autocomplete: 'off',
-    id: 'unlock-pin',
-    type: 'password',
-  })
-  const msg = el('p', { class: 'pin-message', 'aria-live': 'assertive' })
-  const btn = el(
-    'button',
-    { class: 'btn btn-primary', type: 'submit' },
-    'Unlock',
-  )
+  const pinInput = html`<input
+    autocomplete="off"
+    id="unlock-pin"
+    type="password"
+  />` as HTMLInputElement
+  const msg = html`<p
+    class="pin-message"
+    aria-live="assertive"
+  ></p>` as HTMLElement
 
-  const form = el('form', { class: 'pin-form' })
-  form.append(fieldGroup('PIN', pinInput), btn, msg)
-
-  form.addEventListener('submit', async (e) => {
+  const onSubmit = async (e: Event): Promise<void> => {
     e.preventDefault()
-    const pin = (pinInput as HTMLInputElement).value
+    const pin = pinInput.value
     if (!pin) {
       msg.textContent = 'Please enter your PIN.'
       return
     }
-    const ok = await unlock(pin)
-    if (ok) {
-      onUnlocked()
-    } else {
-      msg.textContent = 'Could not unlock. Check your PIN.'
+    try {
+      const ok = await unlock(pin)
+      if (ok) {
+        onUnlocked()
+      } else {
+        msg.textContent = 'Could not unlock. Check your PIN.'
+      }
+    } catch {
+      /* v8 ignore start */
+      msg.textContent = 'An error occurred. Please try again.'
+      /* v8 ignore stop */
     }
-  })
+  }
 
   container.replaceChildren(
-    heading,
-    el('p', {}, 'Your data is encrypted. Enter your PIN to continue.'),
-    form,
+    ...htmlList`
+    <h2>Unlock Daylog</h2>
+    <p>Your data is encrypted. Enter your PIN to continue.</p>
+    <form class="pin-form" onsubmit=${onSubmit}>
+      ${fieldGroup('PIN', pinInput)}
+      <button class="btn btn-primary" type="submit">Unlock</button>
+      ${msg}
+    </form>
+  `,
   )
 }

@@ -1,19 +1,12 @@
 // Attendance percentage calculator.
 // Pure function: takes entries and settings, returns stats.
 
+import { toISODate } from './date-utils'
 import type {
   AttendanceEntry,
   AttendanceSettings,
   AttendanceStats,
 } from './types'
-
-// Return YYYY-MM-DD for a Date object using local time.
-const toISO = (d: Date): string => {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 // Check whether a Date falls on a weekday (Mon–Fri).
 const isWeekday = (d: Date): boolean => {
@@ -54,7 +47,7 @@ export const calculateAttendance = (
 
     if (!isWeekday(d)) continue
 
-    const iso = toISO(d)
+    const iso = toISODate(d)
     const reason = lookup.get(iso)
 
     if (

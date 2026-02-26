@@ -33,7 +33,7 @@ export default tseslint.config(
       'no-restricted-properties': [
         'error',
         {
-          message: 'Use el() helper and replaceChildren() instead.',
+          message: 'Use html`` or el() helper and replaceChildren() instead.',
           property: 'innerHTML',
         },
       ],
