@@ -293,6 +293,25 @@ textarea {
   color: #4caf7c;
 }
 
+.pin-strength {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: -0.25rem;
+  min-height: 1.1em;
+}
+
+.pin-strength-weak {
+  color: var(--accent);
+}
+
+.pin-strength-fair {
+  color: #e6a23c;
+}
+
+.pin-strength-strong {
+  color: #4caf7c;
+}
+
 /* ---- Empty state ---- */
 
 .empty-state {

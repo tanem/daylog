@@ -1,32 +1,32 @@
 // Encryption lifecycle: enable/disable encryption, change PIN, migrate entries.
+// All multi-entry operations use atomicRekey for crash safety.
 
-import { loadAllEntries, saveEntry } from './entries'
+import { loadAllEntries, prepareEntry } from './entries'
 import * as enc from './crypto'
+import { atomicRekey } from './db'
 
 // Encrypt any plaintext entries still in the store.
 // Called after enableEncryption to migrate existing data.
 export const migrateEntriesToEncrypted = async (): Promise<void> => {
   const all = await loadAllEntries()
-  for (const entry of all) {
-    await saveEntry(entry)
-  }
+  const prepared = await Promise.all(all.map(prepareEntry))
+  await atomicRekey(prepared)
 }
 
 // Change the encryption PIN. Session must be unlocked with the current PIN.
-// Decrypts all entries with the old key, re-keys, then re-encrypts everything.
+// Decrypts all entries with the old key, derives a new key, re-encrypts
+// everything, then writes entries + new meta in a single transaction.
 export const changeEncryptionPin = async (newPin: string): Promise<void> => {
   const plainEntries = await loadAllEntries()
-  await enc.changePin(newPin)
-  for (const entry of plainEntries) {
-    await saveEntry(entry)
-  }
+  const meta = await enc.changePin(newPin)
+  const prepared = await Promise.all(plainEntries.map(prepareEntry))
+  await atomicRekey(prepared, meta)
 }
 
-// Disable encryption: decrypt all entries and store as plaintext, then clear meta.
+// Disable encryption: decrypt all entries, then write them as plaintext + clear
+// meta in a single transaction.
 export const disableEncryption = async (): Promise<void> => {
   const plainEntries = await loadAllEntries()
-  await enc.clearEncryptionMeta()
-  for (const entry of plainEntries) {
-    await saveEntry(entry)
-  }
+  enc.lock()
+  await atomicRekey(plainEntries, { enabled: false })
 }

@@ -6,10 +6,55 @@ import {
   disableEncryption,
 } from '../encryption'
 import { enableEncryption, unlock } from '../crypto'
+import type { UnlockResult } from '../types'
 import { fieldGroup } from './field-group'
 import { html } from './html'
 
 export const MIN_PIN_LENGTH = 6
+
+type Strength = 'weak' | 'fair' | 'strong'
+
+// Assess PIN strength. Advisory only: does not block submission.
+export const pinStrength = (pin: string): Strength => {
+  const hasLetters = /[a-zA-Z]/.test(pin)
+  if (hasLetters && pin.length >= 10) return 'strong'
+  if ((hasLetters && pin.length >= 6) || pin.length > 8) return 'fair'
+  return 'weak'
+}
+
+// Create a strength indicator element and bind it to an input's input event.
+const bindStrengthIndicator = (input: HTMLInputElement): HTMLElement => {
+  const indicator = html`<p
+    class="pin-strength"
+    aria-live="polite"
+  ></p>` as HTMLElement
+  input.addEventListener('input', () => {
+    const val = input.value
+    if (!val) {
+      indicator.textContent = ''
+      indicator.className = 'pin-strength'
+      return
+    }
+    const strength = pinStrength(val)
+    indicator.textContent = strength.charAt(0).toUpperCase() + strength.slice(1)
+    indicator.className = `pin-strength pin-strength-${strength}`
+  })
+  return indicator
+}
+
+// Format a failed unlock result as a user-facing message.
+const unlockErrorMessage = (result: UnlockResult, fallback: string): string => {
+  if (result.wiped) {
+    return 'All data has been erased after too many failed attempts.'
+  }
+  if (result.locked && result.retryAfterMs) {
+    const seconds = Math.ceil(result.retryAfterMs / 1000)
+    const wait =
+      seconds < 60 ? `${seconds} seconds` : `${Math.ceil(seconds / 60)} minutes`
+    return `Too many attempts. Try again in ${wait}.`
+  }
+  return fallback
+}
 
 // Rendered when encryption is already enabled.
 export const buildEncryptionEnabled = (rerender: () => void): HTMLElement => {
@@ -44,9 +89,12 @@ export const buildEncryptionEnabled = (rerender: () => void): HTMLElement => {
       changePinMsg.textContent = 'Enter your current PIN.'
       return
     }
-    const valid = await unlock(currentPin)
-    if (!valid) {
-      changePinMsg.textContent = 'Current PIN is incorrect.'
+    const result = await unlock(currentPin)
+    if (!result.success) {
+      changePinMsg.textContent = unlockErrorMessage(
+        result,
+        'Current PIN is incorrect.',
+      )
       return
     }
     if (!newPin || newPin.length < MIN_PIN_LENGTH) {
@@ -89,9 +137,9 @@ export const buildEncryptionEnabled = (rerender: () => void): HTMLElement => {
       disableMsg.textContent = 'Enter your PIN to disable encryption.'
       return
     }
-    const valid = await unlock(pin)
-    if (!valid) {
-      disableMsg.textContent = 'PIN is incorrect.'
+    const result = await unlock(pin)
+    if (!result.success) {
+      disableMsg.textContent = unlockErrorMessage(result, 'PIN is incorrect.')
       return
     }
     try {
@@ -116,6 +164,7 @@ export const buildEncryptionEnabled = (rerender: () => void): HTMLElement => {
       <form class="pin-form" onsubmit=${onChangePin}>
         ${fieldGroup('Current PIN', currentPinInput)}
         ${fieldGroup('New PIN', newPinInput)}
+        ${bindStrengthIndicator(newPinInput)}
         ${fieldGroup('Confirm new PIN', confirmNewPinInput)}
         <button class="btn" type="submit">Change PIN</button>
         ${changePinMsg}
@@ -189,10 +238,10 @@ export const buildEncryptionDisabled = (rerender: () => void): HTMLElement => {
       </p>
       <p class="warning">
         If you forget your PIN, recovery is impossible. Your data will be
-        permanently lost.
+        permanently lost. After 15 failed unlock attempts, all data is erased.
       </p>
       <form class="pin-form" onsubmit=${onEnable}>
-        ${fieldGroup('PIN', pinInput)}
+        ${fieldGroup('PIN', pinInput)} ${bindStrengthIndicator(pinInput)}
         ${fieldGroup('Confirm PIN', confirmInput)}
         <button class="btn" type="submit">Enable encryption</button>
         ${pinMsg}

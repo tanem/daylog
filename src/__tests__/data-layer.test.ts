@@ -1,6 +1,6 @@
 // Integration tests for the data layer: entries.ts, encryption.ts, db.ts, crypto.ts.
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AttendanceEntry } from '../types'
 
 // We need fresh modules per-test to reset the cached dbInstance in db.ts
@@ -16,10 +16,6 @@ beforeEach(async () => {
   entries = await import('../entries')
   encryption = await import('../encryption')
   enc = await import('../crypto')
-})
-
-afterEach(() => {
-  enc.lock()
 })
 
 describe('entries (plaintext)', () => {
@@ -194,7 +190,7 @@ describe('encryption round-trip', () => {
     expect(enc.isUnlocked()).toBe(false)
 
     const ok = await enc.unlock(PIN)
-    expect(ok).toBe(true)
+    expect(ok.success).toBe(true)
     expect(enc.isUnlocked()).toBe(true)
 
     const all = await entries.loadAllEntries()
@@ -229,9 +225,9 @@ describe('encryption round-trip', () => {
     )
   })
 
-  it('unlock returns false when encryption is not enabled', async () => {
+  it('unlock returns unsuccessful when encryption is not enabled', async () => {
     const result = await enc.unlock('anypin')
-    expect(result).toBe(false)
+    expect(result.success).toBe(false)
   })
 
   it('loadAllEntries handles mixed encrypted and plaintext items', async () => {
@@ -253,25 +249,24 @@ describe('encryption round-trip', () => {
     expect(dates).toEqual(['2026-01-01', '2026-01-02'])
   })
 
-  it('unlock returns false for wrong PIN', async () => {
+  it('unlock returns unsuccessful for wrong PIN', async () => {
     await enc.enableEncryption(PIN)
     enc.lock()
 
     const result = await enc.unlock('wrongpin')
-    expect(result).toBe(false)
+    expect(result.success).toBe(false)
     expect(enc.isUnlocked()).toBe(false)
   })
 
-  it('unlock succeeds with legacy meta lacking verification tag', async () => {
+  it('unlock rejects legacy meta without verification tag', async () => {
     // Simulate legacy meta: enabled with salt but no verificationIv/verificationTag.
     const salt = new Uint8Array(16)
     crypto.getRandomValues(salt)
     await db.setEncryptionMeta({ enabled: true, salt })
 
-    // Unlock should succeed (skips verification when tag is absent).
     const result = await enc.unlock(PIN)
-    expect(result).toBe(true)
-    expect(enc.isUnlocked()).toBe(true)
+    expect(result.success).toBe(false)
+    expect(enc.isUnlocked()).toBe(false)
   })
 
   it('migrateEntriesToEncrypted encrypts existing plaintext entries', async () => {
@@ -338,11 +333,11 @@ describe('encryption round-trip', () => {
     // Old PIN should no longer work.
     enc.lock()
     const oldResult = await enc.unlock(PIN)
-    expect(oldResult).toBe(false)
+    expect(oldResult.success).toBe(false)
 
     // New PIN should work.
     const newResult = await enc.unlock(newPin)
-    expect(newResult).toBe(true)
+    expect(newResult.success).toBe(true)
 
     const all = await entries.loadAllEntries()
     expect(all).toHaveLength(1)
@@ -377,5 +372,129 @@ describe('encryption round-trip', () => {
     enc.lock()
 
     await expect(enc.changePin('newpin')).rejects.toThrow('Session is locked.')
+  })
+})
+
+// These tests exercise the real PBKDF2 derivation (600k iterations) per unlock
+// call. Each call takes ~150-300ms, so tests looping multiple failures are
+// intentionally slow: this validates the full crypto integration rather than
+// mocking it away.
+describe('brute-force protection', () => {
+  const PIN = 'test1234'
+
+  it('allows first 4 failed attempts without delay', async () => {
+    await enc.enableEncryption(PIN)
+    enc.lock()
+
+    for (let i = 0; i < 4; i++) {
+      const result = await enc.unlock('wrong')
+      expect(result.success).toBe(false)
+      expect(result.locked).toBeUndefined()
+      expect(result.retryAfterMs).toBeUndefined()
+    }
+  })
+
+  it('returns cooldown after 5 failures', async () => {
+    await enc.enableEncryption(PIN)
+    enc.lock()
+
+    for (let i = 0; i < 5; i++) {
+      await enc.unlock('wrong')
+    }
+
+    // The 5th failure should return a cooldown.
+    const result = await enc.unlock('wrong')
+    expect(result.success).toBe(false)
+    expect(result.locked).toBe(true)
+    expect(result.retryAfterMs).toBeGreaterThan(0)
+    expect(result.retryAfterMs).toBeLessThanOrEqual(30_000)
+  })
+
+  it('resets counter on successful unlock', async () => {
+    await enc.enableEncryption(PIN)
+    enc.lock()
+
+    // Fail 4 times.
+    for (let i = 0; i < 4; i++) {
+      await enc.unlock('wrong')
+    }
+
+    // Succeed.
+    const ok = await enc.unlock(PIN)
+    expect(ok.success).toBe(true)
+
+    // Fail again: should be treated as first failure (no cooldown).
+    enc.lock()
+    const result = await enc.unlock('wrong')
+    expect(result.success).toBe(false)
+    expect(result.locked).toBeUndefined()
+  })
+
+  it('wipes data after 15 failures', async () => {
+    await enc.enableEncryption(PIN)
+    await entries.saveEntry({ date: '2026-01-01', reason: 'office' })
+    enc.lock()
+
+    // Use vi.spyOn to advance Date.now past cooldowns.
+    let fakeNow = Date.now()
+    vi.spyOn(Date, 'now').mockImplementation(() => fakeNow)
+
+    for (let i = 0; i < 14; i++) {
+      await enc.unlock('wrong')
+      // Advance past any cooldown.
+      fakeNow += 31 * 60_000
+    }
+
+    // 15th failure should wipe.
+    const result = await enc.unlock('wrong')
+    expect(result.success).toBe(false)
+    expect(result.wiped).toBe(true)
+
+    // All data should be gone.
+    const allEntries = await db.getAllEntries()
+    expect(allEntries).toHaveLength(0)
+    const meta = await db.getEncryptionMeta()
+    expect(meta.enabled).toBe(false)
+  })
+
+  it('persists failed attempts across module reloads', async () => {
+    await enc.enableEncryption(PIN)
+    enc.lock()
+
+    // Fail 4 times.
+    for (let i = 0; i < 4; i++) {
+      await enc.unlock('wrong')
+    }
+
+    // Reload modules (simulates app restart).
+    vi.resetModules()
+    const freshEnc = await import('../crypto')
+    const freshDb = await import('../db')
+
+    // 5th failure should trigger cooldown even after reload.
+    const result = await freshEnc.unlock('wrong')
+    expect(result.success).toBe(false)
+
+    // Verify counter was persisted.
+    const attempts = await freshDb.getFailedAttempts()
+    expect(attempts.count).toBe(5)
+
+    // Clean up: re-import for afterEach to work.
+    enc = freshEnc
+    db = freshDb
+  })
+
+  it('prepareEntry encrypts when encryption is enabled', async () => {
+    await enc.enableEncryption(PIN)
+    const saved = await entries.saveEntry({ date: '2026-02-01', reason: 'wfh' })
+    const prepared = await entries.prepareEntry(saved)
+    expect('ciphertext' in prepared).toBe(true)
+  })
+
+  it('prepareEntry returns plaintext when encryption is disabled', async () => {
+    const saved = await entries.saveEntry({ date: '2026-02-01', reason: 'wfh' })
+    const prepared = await entries.prepareEntry(saved)
+    expect('date' in prepared).toBe(true)
+    expect('ciphertext' in prepared).toBe(false)
   })
 })

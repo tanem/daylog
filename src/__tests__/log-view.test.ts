@@ -1,6 +1,6 @@
 // Integration tests for log-view: renders form, saves entries to real DB.
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AttendanceEntry } from '../types'
 
 let renderLogView: typeof import('../ui/log-view').renderLogView
@@ -8,14 +8,11 @@ let entries: typeof import('../entries')
 let settings: typeof import('../settings')
 
 beforeEach(async () => {
+  vi.useRealTimers()
   vi.resetModules()
   renderLogView = (await import('../ui/log-view')).renderLogView
   entries = await import('../entries')
   settings = await import('../settings')
-})
-
-afterEach(() => {
-  vi.useRealTimers()
 })
 
 const getContainer = (): HTMLElement => document.createElement('div')

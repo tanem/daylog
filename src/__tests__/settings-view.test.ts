@@ -5,14 +5,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 let renderSettingsView: typeof import('../ui/settings-view').renderSettingsView
 let entries: typeof import('../entries')
 let enc: typeof import('../crypto')
+let db: typeof import('../db')
 let exportModule: typeof import('../export')
 let settings: typeof import('../settings')
 
 beforeEach(async () => {
+  vi.useRealTimers()
   vi.resetModules()
   renderSettingsView = (await import('../ui/settings-view')).renderSettingsView
   entries = await import('../entries')
   enc = await import('../crypto')
+  db = await import('../db')
   exportModule = await import('../export')
   settings = await import('../settings')
 
@@ -499,7 +502,7 @@ describe('renderSettingsView', () => {
       )
     })
 
-    it('exports without confirmation when encrypted', async () => {
+    it('requires two-step confirmation when encrypted', async () => {
       await enc.enableEncryption('testpin123')
       await entries.saveEntry({ date: '2026-02-20', reason: 'office' })
 
@@ -508,6 +511,14 @@ describe('renderSettingsView', () => {
 
       const buttons = Array.from(container.querySelectorAll('button'))
       const jsonBtn = buttons.find((b) => b.textContent === 'Export as JSON')!
+
+      // First click shows confirmation prompt.
+      jsonBtn.click()
+      expect(exportModule.download).not.toHaveBeenCalled()
+      expect(jsonBtn.textContent).toBe('Confirm: download plaintext file?')
+      expect(jsonBtn.classList.contains('btn-danger')).toBe(true)
+
+      // Second click triggers export.
       jsonBtn.click()
 
       await vi.waitFor(() => {
@@ -529,6 +540,9 @@ describe('renderSettingsView', () => {
 
       const buttons = Array.from(container.querySelectorAll('button'))
       const jsonBtn = buttons.find((b) => b.textContent === 'Export as JSON')!
+
+      // Two-step: first click sets confirmation, second click exports.
+      jsonBtn.click()
       jsonBtn.click()
 
       await vi.waitFor(() => {
@@ -668,8 +682,8 @@ describe('renderSettingsView', () => {
 
       // Verify data is accessible with new PIN.
       enc.lock()
-      const ok = await enc.unlock('newpin123')
-      expect(ok).toBe(true)
+      const result = await enc.unlock('newpin123')
+      expect(result.success).toBe(true)
       const all = await entries.loadAllEntries()
       expect(all).toHaveLength(1)
       expect(all[0]!.date).toBe('2026-02-20')
@@ -762,5 +776,217 @@ describe('renderSettingsView', () => {
         'Longer PINs are stronger. Letters and numbers are both fine.',
       )
     })
+  })
+
+  describe('PIN strength indicator', () => {
+    it('shows Weak for short numeric PIN', async () => {
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const pinInput = container.querySelector('#pin-input') as HTMLInputElement
+      pinInput.value = '123456'
+      pinInput.dispatchEvent(new Event('input'))
+
+      const indicator = container.querySelector('.pin-strength')!
+      expect(indicator.textContent).toBe('Weak')
+      expect(indicator.classList.contains('pin-strength-weak')).toBe(true)
+    })
+
+    it('shows Fair for longer numeric PIN', async () => {
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const pinInput = container.querySelector('#pin-input') as HTMLInputElement
+      pinInput.value = '123456789'
+      pinInput.dispatchEvent(new Event('input'))
+
+      const indicator = container.querySelector('.pin-strength')!
+      expect(indicator.textContent).toBe('Fair')
+      expect(indicator.classList.contains('pin-strength-fair')).toBe(true)
+    })
+
+    it('shows Fair for short alphanumeric PIN', async () => {
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const pinInput = container.querySelector('#pin-input') as HTMLInputElement
+      pinInput.value = 'abc123'
+      pinInput.dispatchEvent(new Event('input'))
+
+      const indicator = container.querySelector('.pin-strength')!
+      expect(indicator.textContent).toBe('Fair')
+      expect(indicator.classList.contains('pin-strength-fair')).toBe(true)
+    })
+
+    it('shows Strong for long alphanumeric PIN', async () => {
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const pinInput = container.querySelector('#pin-input') as HTMLInputElement
+      pinInput.value = 'myStr0ngP1n!'
+      pinInput.dispatchEvent(new Event('input'))
+
+      const indicator = container.querySelector('.pin-strength')!
+      expect(indicator.textContent).toBe('Strong')
+      expect(indicator.classList.contains('pin-strength-strong')).toBe(true)
+    })
+
+    it('clears indicator when PIN is empty', async () => {
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const pinInput = container.querySelector('#pin-input') as HTMLInputElement
+      pinInput.value = '123456'
+      pinInput.dispatchEvent(new Event('input'))
+      expect(container.querySelector('.pin-strength')!.textContent).toBe('Weak')
+
+      pinInput.value = ''
+      pinInput.dispatchEvent(new Event('input'))
+      expect(container.querySelector('.pin-strength')!.textContent).toBe('')
+    })
+
+    it('shows strength indicator on new PIN in change PIN form', async () => {
+      await enc.enableEncryption('testpin123')
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const newPinInput = container.querySelector(
+        '#new-pin',
+      ) as HTMLInputElement
+      newPinInput.value = 'myStr0ngP1n!'
+      newPinInput.dispatchEvent(new Event('input'))
+
+      const indicators = container.querySelectorAll('.pin-strength')
+      // The change-PIN form's indicator (first one in the enabled view).
+      const indicator = indicators[0]!
+      expect(indicator.textContent).toBe('Strong')
+      expect(indicator.classList.contains('pin-strength-strong')).toBe(true)
+    })
+  })
+
+  describe('export confirmation with encryption', () => {
+    it('confirmation resets after timeout', async () => {
+      await enc.enableEncryption('testpin123')
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const buttons = Array.from(container.querySelectorAll('button'))
+      const jsonBtn = buttons.find((b) => b.textContent === 'Export as JSON')!
+
+      // Enable fake timers after all IDB operations are done
+      // (fake-indexeddb uses setTimeout for transaction auto-commit).
+      vi.useFakeTimers()
+
+      // First click enters confirmation mode.
+      jsonBtn.click()
+      expect(jsonBtn.textContent).toBe('Confirm: download plaintext file?')
+
+      // Advance past the 3-second timeout.
+      vi.advanceTimersByTime(3000)
+
+      // Button should revert.
+      expect(jsonBtn.textContent).toBe('Export as JSON')
+      expect(jsonBtn.classList.contains('btn-danger')).toBe(false)
+      expect(exportModule.download).not.toHaveBeenCalled()
+
+      vi.useRealTimers()
+    })
+
+    it('exports immediately without confirmation when encryption is disabled', async () => {
+      await entries.saveEntry({ date: '2026-02-20', reason: 'wfh' })
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      const buttons = Array.from(container.querySelectorAll('button'))
+      const jsonBtn = buttons.find((b) => b.textContent === 'Export as JSON')!
+      jsonBtn.click()
+
+      await vi.waitFor(() => {
+        expect(exportModule.download).toHaveBeenCalledOnce()
+      })
+    })
+  })
+
+  // These tests pre-populate failedAttempts in the DB to trigger cooldown/wipe
+  // without looping PBKDF2 calls. The 10s timeout is a ceiling for vi.waitFor,
+  // not a real wait: actual execution takes <500ms (one PBKDF2 call in the form
+  // handler).
+  describe('brute-force messages in PIN forms', () => {
+    it('shows throttle message on change PIN form', async () => {
+      await enc.enableEncryption('testpin123')
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      // Pre-populate failed attempts to trigger cooldown.
+      await db.setFailedAttempts({ count: 5, lastAttemptAt: Date.now() })
+      enc.lock()
+
+      const currentPin = container.querySelector(
+        '#current-pin',
+      ) as HTMLInputElement
+      currentPin.value = 'wrong'
+      submitFormFor(container, '#current-pin')
+
+      await vi.waitFor(() => {
+        const msgs = container.querySelectorAll('.pin-message')
+        const changePinMsg = msgs[0]!
+        expect(changePinMsg.textContent).toMatch(/Too many attempts/)
+      })
+    }, 10_000)
+
+    it('shows throttle message (minutes) on disable encryption form', async () => {
+      await enc.enableEncryption('testpin123')
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      // Pre-populate 8 failed attempts to trigger 5-minute cooldown (hits minutes branch).
+      await db.setFailedAttempts({ count: 8, lastAttemptAt: Date.now() })
+      enc.lock()
+
+      const disablePin = container.querySelector(
+        '#disable-pin',
+      ) as HTMLInputElement
+      disablePin.value = 'wrong'
+      submitFormFor(container, '#disable-pin')
+
+      await vi.waitFor(() => {
+        const msgs = container.querySelectorAll('.pin-message')
+        const disableMsg = msgs[1]!
+        expect(disableMsg.textContent).toMatch(/Too many attempts.*\d+ minutes/)
+      })
+    }, 10_000)
+
+    it('shows wipe message on change PIN form after 15 failures', async () => {
+      await enc.enableEncryption('testpin123')
+
+      const container = getContainer()
+      await renderSettingsView(container, vi.fn())
+
+      // Pre-populate 14 failed attempts so next failure wipes.
+      await db.setFailedAttempts({
+        count: 14,
+        lastAttemptAt: Date.now() - 31 * 60_000,
+      })
+      enc.lock()
+
+      const currentPin = container.querySelector(
+        '#current-pin',
+      ) as HTMLInputElement
+      currentPin.value = 'wrong'
+      submitFormFor(container, '#current-pin')
+
+      await vi.waitFor(() => {
+        const msgs = container.querySelectorAll('.pin-message')
+        const changePinMsg = msgs[0]!
+        expect(changePinMsg.textContent).toBe(
+          'All data has been erased after too many failed attempts.',
+        )
+      })
+    }, 10_000)
   })
 })

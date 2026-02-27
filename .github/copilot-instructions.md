@@ -42,6 +42,8 @@ Keep these instructions minimal: only rules and constraints an agent cannot infe
 - Destructive actions use a type-to-confirm pattern (e.g. type "delete") or an inline two-step confirmation (click then confirm). Never use `window.confirm()` or `window.alert()`.
 - Maintain strict CSP in `index.html`. No `unsafe-inline` for scripts or styles.
 - Validate date inputs with `isValidDate()` from `src/date-utils.ts` before saving entries.
+- PIN change, disable-encryption, and migrate operations use `atomicRekey()` from `src/db.ts` for crash safety: all entries + meta are written in a single IndexedDB transaction.
+- `unlock()` in `src/crypto.ts` enforces exponential backoff on failed attempts and wipes all data after 15 consecutive failures. Failed attempt state is persisted in IndexedDB.
 
 ## Conventions
 
@@ -59,7 +61,11 @@ Keep these instructions minimal: only rules and constraints an agent cannot infe
 
 ## Tests
 
-- Integration-style: exercise the real stack rather than mocking.
+- Integration-style: exercise the real stack (DB, crypto, DOM) rather than mocking. Only mock when the environment makes it impossible (e.g. jsdom lacks blob URLs, `fake-indexeddb` breaks under fake timers). Add a comment explaining why when mocking is necessary.
+- Clean slate: every test must start from a known-empty state. `vi.resetModules()` in `beforeEach` resets cached module state (DB connection, session key). The test setup file provides a fresh `IDBFactory` per test.
+- Timer hygiene: call `vi.useRealTimers()` in `beforeEach` (not `afterEach`) so a crashed test cannot leak fake timers into the next one. Enable `vi.useFakeTimers()` as late as possible: after all IDB operations, since `fake-indexeddb` uses `setTimeout` internally.
+- No long real waits: do not use real `setTimeout` or large `vi.waitFor` timeouts to paper over test issues. Investigate the root cause. If a `vi.waitFor` timeout exceeds the default, add a comment explaining why (e.g. PBKDF2 cost).
+- Prefer DB pre-population over looping real crypto calls when testing brute-force/cooldown paths. Use `db.setFailedAttempts()` to set up state directly rather than calling `unlock()` N times through PBKDF2.
 - Call `vi.resetModules()` in a `beforeEach` when the module under test caches state (e.g. `db.ts` caches its connection).
 - Use `/* v8 ignore start */` / `/* v8 ignore stop */` (not `/* v8 ignore next */`) to exclude untestable defensive code. The `next` variant breaks because esbuild strips comments before v8 sees them.
 - Dev-only dependencies go in `devDependencies`. The zero-runtime-dependency rule applies to production bundles only.

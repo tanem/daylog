@@ -47,3 +47,17 @@ export interface EncryptionMeta {
   verificationIv?: Uint8Array
   verificationTag?: ArrayBuffer
 }
+
+// Brute-force attempt tracking, persisted in IndexedDB.
+export interface FailedAttempts {
+  count: number
+  lastAttemptAt: number
+}
+
+// Result of an unlock attempt, including throttling state.
+export interface UnlockResult {
+  success: boolean
+  locked?: boolean
+  retryAfterMs?: number
+  wiped?: boolean
+}

@@ -26,6 +26,7 @@ const cspPlugin = (): Plugin => ({
         "connect-src 'self'",
         "font-src 'self'",
         "object-src 'none'",
+        "worker-src 'self'",
         "base-uri 'self'",
         "form-action 'self'",
       ].join('; ')

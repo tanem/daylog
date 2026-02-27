@@ -41,6 +41,18 @@ export const loadAllEntries = async (): Promise<AttendanceEntry[]> => {
   return results
 }
 
+// Prepare an entry for storage (encrypt if needed) without writing it.
+// Used by encryption.ts for batch operations.
+export const prepareEntry = async (
+  entry: AttendanceEntry,
+): Promise<AttendanceEntry | EncryptedEnvelope> => {
+  const encrypted = await enc.isEncryptionEnabled()
+  if (encrypted) {
+    return enc.encryptEntry(entry)
+  }
+  return entry
+}
+
 export const removeEntry = async (id: string): Promise<void> => {
   await db.deleteEntry(id)
 }

@@ -7,6 +7,7 @@ import type {
   AttendanceSettings,
   EncryptedEnvelope,
   EncryptionMeta,
+  FailedAttempts,
 } from './types'
 
 const DB_NAME = 'daylog'
@@ -113,6 +114,54 @@ export const setAttendanceSettings = async (
 ): Promise<void> => {
   const db = await getDb()
   await db.put('meta', { key: 'attendance', ...settings })
+}
+
+// ---------- Failed unlock attempts ----------
+
+export const getFailedAttempts = async (): Promise<FailedAttempts> => {
+  const db = await getDb()
+  const result = await db.get('meta', 'failedAttempts')
+  if (!result) return { count: 0, lastAttemptAt: 0 }
+  const raw = result as unknown as FailedAttempts
+  return { count: raw.count, lastAttemptAt: raw.lastAttemptAt }
+}
+
+export const setFailedAttempts = async (
+  attempts: FailedAttempts,
+): Promise<void> => {
+  const db = await getDb()
+  await db.put('meta', { key: 'failedAttempts', ...attempts })
+}
+
+export const clearFailedAttempts = async (): Promise<void> => {
+  const db = await getDb()
+  await db.delete('meta', 'failedAttempts')
+}
+
+// ---------- Atomic batch write ----------
+
+// Write all entries (and optionally new encryption meta) in a single IndexedDB
+// transaction. This prevents data loss if the app crashes mid-migration: either
+// all writes land or none do.
+export const atomicRekey = async (
+  allEntries: (AttendanceEntry | EncryptedEnvelope)[],
+  meta?: EncryptionMeta,
+): Promise<void> => {
+  const db = await getDb()
+  const stores: ('entries' | 'meta')[] = meta
+    ? ['entries', 'meta']
+    : ['entries']
+  const tx = db.transaction(stores, 'readwrite')
+  const entryStore = tx.objectStore('entries')
+  await entryStore.clear()
+  for (const entry of allEntries) {
+    await entryStore.put(entry)
+  }
+  if (meta) {
+    const metaStore = tx.objectStore('meta')
+    await metaStore.put({ key: 'encryption', ...meta })
+  }
+  await tx.done
 }
 
 // ---------- Full wipe ----------

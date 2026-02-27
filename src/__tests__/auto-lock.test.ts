@@ -6,6 +6,7 @@ let autoLock: typeof import('../auto-lock')
 let enc: typeof import('../crypto')
 
 beforeEach(async () => {
+  vi.useRealTimers()
   vi.resetModules()
   autoLock = await import('../auto-lock')
   enc = await import('../crypto')
@@ -24,10 +25,6 @@ const setupUnlocked = async (): Promise<void> => {
 }
 
 describe('startAutoLock', () => {
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
   it('calls onLock after inactivity timeout when unlocked', async () => {
     await setupUnlocked()
     const onLock = vi.fn()
@@ -111,10 +108,6 @@ describe('startAutoLock', () => {
 })
 
 describe('stopAutoLock', () => {
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
   it('cancels the inactivity timer', async () => {
     await setupUnlocked()
     const onLock = vi.fn()
@@ -141,10 +134,6 @@ describe('stopAutoLock', () => {
 })
 
 describe('resetAutoLock', () => {
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
   it('restarts the inactivity timer', async () => {
     await setupUnlocked()
     const onLock = vi.fn()
