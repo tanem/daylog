@@ -63,11 +63,13 @@ Requires Node.js. The version is pinned in `.nvmrc`: run `nvm use` to switch to 
 
 ```sh
 npm install
+npx playwright install --with-deps   # Install browser engines (first time only)
 npm run dev       # Start Vite dev server
 npm run check     # Format, lint, typecheck, test, build
 npm run build     # Type-check then build for production
 npm run preview   # Preview the production build locally
-npm run test      # Run tests (Vitest)
+npm test          # Run tests (Playwright, all browsers)
+npm run test:ui   # Interactive Playwright UI mode
 npm run lint      # ESLint
 npm run format    # Prettier
 ```
@@ -78,7 +80,8 @@ npm run format    # Prettier
 - **IndexedDB** for on-device storage. No backend, no network requests.
 - **AES-GCM encryption** (optional) derived from a user-set PIN via PBKDF2 (600k iterations). Auto-locks after inactivity or when backgrounded.
 - **Vite** for development and builds, with `vite-plugin-pwa` for service worker generation.
-- **Vitest** for tests, **ESLint** + **Prettier** for linting and formatting.
+- **Playwright** for end-to-end tests across Chromium, Firefox, and WebKit. Integration-first: tests drive the real app through nav buttons and forms, no mocks or fake environments. Follows [Kent C. Dodds' Testing Trophy](https://kentcdodds.com/blog/the-testing-trophy-and-testing-classifications) approach.
+- **ESLint** + **Prettier** for linting and formatting.
 
 ## Licence
 

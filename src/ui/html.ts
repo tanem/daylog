@@ -17,6 +17,7 @@ const h = (
   const element = document.createElement(tag)
 
   if (props) {
+    /* v8 ignore start -- v8 cannot reliably track all branches through esbuild-transformed htm output */
     for (const [key, val] of Object.entries(props)) {
       if (key.startsWith('on') && typeof val === 'function') {
         element.addEventListener(
@@ -29,6 +30,7 @@ const h = (
         element.setAttribute(key, val === true ? '' : String(val))
       }
     }
+    /* v8 ignore stop */
   }
 
   const append = (child: unknown): void => {

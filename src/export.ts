@@ -25,6 +25,8 @@ const csvField = (value: string): string => {
 }
 
 // Trigger a file download in the browser.
+// jsdom does not support blob URLs, so this is mocked in tests.
+/* v8 ignore start */
 export const download = (
   content: string,
   filename: string,
@@ -40,3 +42,4 @@ export const download = (
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
+/* v8 ignore stop */

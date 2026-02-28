@@ -116,6 +116,7 @@ const entryItem = (
 }
 
 const reasonLabel = (reason: string): string =>
+  /* v8 ignore next -- defensive fallback for unknown reason values */
   REASON_LABELS[reason as keyof typeof REASON_LABELS]?.short ?? reason
 
 // Re-render the view after a deletion.

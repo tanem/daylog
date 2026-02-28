@@ -61,13 +61,19 @@ Keep these instructions minimal: only rules and constraints an agent cannot infe
 
 ## Tests
 
-- Integration-style: exercise the real stack (DB, crypto, DOM) rather than mocking. Only mock when the environment makes it impossible (e.g. jsdom lacks blob URLs, `fake-indexeddb` breaks under fake timers). Add a comment explaining why when mocking is necessary.
-- Clean slate: every test must start from a known-empty state. `vi.resetModules()` in `beforeEach` resets cached module state (DB connection, session key). The test setup file provides a fresh `IDBFactory` per test.
-- Timer hygiene: call `vi.useRealTimers()` in `beforeEach` (not `afterEach`) so a crashed test cannot leak fake timers into the next one. Enable `vi.useFakeTimers()` as late as possible: after all IDB operations, since `fake-indexeddb` uses `setTimeout` internally.
-- No long real waits: do not use real `setTimeout` or large `vi.waitFor` timeouts to paper over test issues. Investigate the root cause. If a `vi.waitFor` timeout exceeds the default, add a comment explaining why (e.g. PBKDF2 cost).
-- Prefer DB pre-population over looping real crypto calls when testing brute-force/cooldown paths. Use `db.setFailedAttempts()` to set up state directly rather than calling `unlock()` N times through PBKDF2.
-- Call `vi.resetModules()` in a `beforeEach` when the module under test caches state (e.g. `db.ts` caches its connection).
-- Use `/* v8 ignore start */` / `/* v8 ignore stop */` (not `/* v8 ignore next */`) to exclude untestable defensive code. The `next` variant breaks because esbuild strips comments before v8 sees them.
+Testing philosophy follows Kent C. Dodds' [Testing Trophy](https://kentcdodds.com/blog/the-testing-trophy-and-testing-classifications): integration tests that resemble real usage give the most confidence per line of test code. Simplicity over speed: one test runner, one config, one mental model.
+
+- **Single runner**: [Playwright](https://playwright.dev/) only. No Vitest, no jsdom. Tests run against the real Vite dev server in real browsers.
+- **Multi-browser**: Chromium, Firefox, WebKit. Covers desktop and mobile browser engines.
+- **Locator priority** (mirrors Testing Library): `getByRole` > `getByLabel` > `getByText` > CSS locator (last resort, e.g. checking classes). Query the page the way a user would.
+- **Feature-based organisation**: specs are organised by user journey (`entry-crud`, `encryption-lifecycle`, `settings`), not by source module.
+- **Real stack**: no mocks, no fake-indexeddb. Tests drive the real app through nav buttons and forms. Only use `page.evaluate()` when the browser environment requires it (e.g. programmatically locking the session).
+- **Clean slate**: `beforeEach` deletes the IndexedDB database and reloads the page. Each test starts from empty state.
+- **Time control**: use `page.clock` for time-dependent features (brute-force backoff, auto-lock). Install the clock after IDB operations to avoid interfering with IndexedDB internals.
+- **Brute-force testing**: prefer seeding the `failedAttempts` counter via `page.evaluate()` + direct IDB writes over looping through PBKDF2 calls. This keeps tests fast without sacrificing realism.
+- **Downloads**: use Playwright's `page.waitForEvent('download')` to intercept and verify export file content.
+- **Shared helpers**: `e2e/helpers.ts` provides reusable actions (`navigateTo`, `saveEntry`, `enableEncryption`, `unlockApp`, `clearData`). Keep helpers thin: they should compose real user interactions, not abstract them away.
+- **Coverage**: reported via `monocart-reporter` (V8 coverage with source maps). Not enforced with thresholds: good coverage follows naturally from thorough user journey tests.
 - Dev-only dependencies go in `devDependencies`. The zero-runtime-dependency rule applies to production bundles only.
 
 ## Code style

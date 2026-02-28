@@ -1,0 +1,80 @@
+// Shared helpers for Playwright e2e tests.
+
+import type { Page } from '@playwright/test'
+import { expect } from '@playwright/test'
+
+type View = 'log' | 'history' | 'settings'
+
+const viewLabels: Record<View, string> = {
+  log: 'Log',
+  history: 'History',
+  settings: 'Settings',
+}
+
+// Navigate to a view by clicking its nav button and verifying it becomes active.
+export const navigateTo = async (page: Page, view: View): Promise<void> => {
+  const btn = page.getByRole('button', { name: viewLabels[view] })
+  await btn.click()
+  await expect(btn).toHaveAttribute('aria-current', 'page')
+}
+
+// Fill and submit the log form. Navigates to Log view first.
+export const saveEntry = async (
+  page: Page,
+  opts: { date?: string; reason?: string; notes?: string },
+): Promise<void> => {
+  await navigateTo(page, 'log')
+  if (opts.date) {
+    await page.getByLabel('Date').fill(opts.date)
+  }
+  if (opts.reason) {
+    await page.getByLabel('Reason').selectOption(opts.reason)
+  }
+  if (opts.notes) {
+    await page.getByLabel('Notes').fill(opts.notes)
+  }
+  await page.getByRole('button', { name: 'Save' }).click()
+  // Wait for the save-and-redirect to History to complete, so callers
+  // don't race with an in-flight IDB write or navigation.
+  await expect(page.getByRole('heading', { name: 'History' })).toBeVisible()
+}
+
+// Enable encryption from the settings view by filling in PIN fields.
+export const enableEncryption = async (
+  page: Page,
+  pin: string,
+): Promise<void> => {
+  await navigateTo(page, 'settings')
+  await page.getByLabel('PIN', { exact: true }).fill(pin)
+  await page.getByLabel('Confirm PIN').fill(pin)
+  await page.getByRole('button', { name: 'Enable encryption' }).click()
+  await expect(
+    page.getByText('Encryption is enabled for this device.'),
+  ).toBeVisible()
+}
+
+// Fill the unlock form and submit. Waits for the unlock view to render
+// before interacting, since it appears asynchronously after lock/navigation.
+export const unlockApp = async (page: Page, pin: string): Promise<void> => {
+  await page.getByRole('heading', { name: 'Unlock Daylog' }).waitFor()
+  await page.getByLabel('PIN').fill(pin)
+  await page.getByRole('button', { name: 'Unlock' }).click()
+}
+
+// Lock the encryption session programmatically (simulates auto-lock or tab hide).
+export const lockSession = async (page: Page): Promise<void> => {
+  await page.evaluate('import("/src/crypto.ts").then(m => m.lock())')
+}
+
+// Start each test from a clean app state. Playwright creates a fresh browser
+// context per test, so IndexedDB is already empty: no manual deleteDatabase needed.
+export const resetApp = async (page: Page): Promise<void> => {
+  await page.goto('/')
+}
+
+// Delete all data via the danger zone in settings.
+export const clearData = async (page: Page): Promise<void> => {
+  await navigateTo(page, 'settings')
+  await page.getByLabel('Type "delete" to confirm').fill('delete')
+  await page.getByRole('button', { name: 'Delete all data' }).click()
+}
