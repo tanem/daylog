@@ -20,6 +20,8 @@ jobs:
 
       - run: npm ci
 
+      - run: npx playwright install --with-deps
+
       - run: npm audit --audit-level=moderate
 
       - run: npm run format:check
