@@ -5,12 +5,13 @@ import {
   changeEncryptionPin,
   disableEncryption,
 } from '../encryption'
-import { enableEncryption, unlock } from '../crypto'
+import { enableEncryption, MIN_PIN_LENGTH, unlock } from '../crypto'
 import type { UnlockResult } from '../types'
 import { fieldGroup } from './fields'
 import { html } from './html'
 
-export const MIN_PIN_LENGTH = 6
+// Re-export so the UI can reference the same constant.
+export { MIN_PIN_LENGTH } from '../crypto'
 
 type Strength = 'weak' | 'fair' | 'strong'
 

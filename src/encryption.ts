@@ -19,8 +19,16 @@ export const migrateEntriesToEncrypted = async (): Promise<void> => {
 export const changeEncryptionPin = async (newPin: string): Promise<void> => {
   const plainEntries = await loadAllEntries()
   const meta = await enc.changePin(newPin)
-  const prepared = await Promise.all(plainEntries.map(prepareEntry))
-  await atomicRekey(prepared, meta)
+  try {
+    const prepared = await Promise.all(plainEntries.map(prepareEntry))
+    await atomicRekey(prepared, meta)
+  } catch (err) {
+    // changePin already set the in-memory key to the new derivation, but the
+    // persisted data still uses the old key. Lock the session so the user
+    // must re-unlock with their old (still-valid) PIN.
+    enc.lock()
+    throw err
+  }
 }
 
 // Disable encryption: decrypt all entries, then write them as plaintext + clear

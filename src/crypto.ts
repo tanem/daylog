@@ -22,6 +22,7 @@ const SALT_LENGTH = 16
 const IV_LENGTH = 12
 const VERIFICATION_SENTINEL = 'daylog-pin-check'
 const MAX_ATTEMPTS = 15
+export const MIN_PIN_LENGTH = 6
 
 // Cooldown durations (ms) by attempt count.
 // Attempts 1-4: no delay. 5-7: 30s. 8-10: 5min. 11-14: 30min. 15: wipe.
@@ -71,6 +72,7 @@ const createVerificationTag = async (
 
 // Enable encryption: generate a salt, derive the key, create verification tag, persist meta.
 export const enableEncryption = async (pin: string): Promise<void> => {
+  if (pin.length < MIN_PIN_LENGTH) throw new Error('PIN too short.')
   const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH))
   sessionKey = await deriveKey(pin, salt)
   const { iv, tag } = await createVerificationTag(sessionKey)
@@ -153,6 +155,7 @@ export const isEncryptionEnabled = async (): Promise<boolean> => {
 // Returns the new meta for the caller to persist atomically with re-encrypted entries.
 export const changePin = async (newPin: string): Promise<EncryptionMeta> => {
   if (!sessionKey) throw new Error('Session is locked.')
+  if (newPin.length < MIN_PIN_LENGTH) throw new Error('PIN too short.')
   const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH))
   sessionKey = await deriveKey(newPin, salt)
   const { iv, tag } = await createVerificationTag(sessionKey)

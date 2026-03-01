@@ -48,17 +48,14 @@ test.describe('logging entries', () => {
     await saveEntry(page, { date: '2026-02-20', reason: 'wfh' })
     await saveEntry(page, { date: '2026-02-19', reason: 'leave' })
 
-    await navigateTo(page, 'history')
-
-    const items = page.locator('.entry-item')
-    await expect(items).toHaveCount(3)
+    // Already on History after the last save. Verify sort order.
+    const dates = page.locator('.entry-date')
+    await expect(dates).toHaveCount(3)
 
     // Newest first: Feb 20, Feb 19, Feb 18.
-    const dates = page.locator('.entry-date')
-    const texts = await dates.allTextContents()
-    expect(texts[0]).toContain('20')
-    expect(texts[1]).toContain('19')
-    expect(texts[2]).toContain('18')
+    await expect(dates.nth(0)).toContainText('20')
+    await expect(dates.nth(1)).toContainText('19')
+    await expect(dates.nth(2)).toContainText('18')
   })
 })
 

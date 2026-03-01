@@ -11,11 +11,24 @@ const viewLabels: Record<View, string> = {
   settings: 'Settings',
 }
 
-// Navigate to a view by clicking its nav button and verifying it becomes active.
+// Heading patterns for each view. Used to confirm the view has rendered
+// (not just that aria-current flipped, which happens before the async render).
+const viewHeadings: Record<View, RegExp> = {
+  log: /Log attendance|Edit entry|Unlock Daylog/,
+  history: /^History$|Unlock Daylog/,
+  settings: /^Settings$|Unlock Daylog/,
+}
+
+// Navigate to a view by clicking its nav button and waiting for the view to render.
+// Skips the click when already on the target view to avoid triggering an async
+// re-render that races with subsequent test interactions.
 export const navigateTo = async (page: Page, view: View): Promise<void> => {
   const btn = page.getByRole('button', { name: viewLabels[view] })
+  if ((await btn.getAttribute('aria-current')) === 'page') return
   await btn.click()
-  await expect(btn).toHaveAttribute('aria-current', 'page')
+  await expect(
+    page.getByRole('heading', { name: viewHeadings[view] }),
+  ).toBeVisible()
 }
 
 // Fill and submit the log form. Navigates to Log view first.
@@ -68,8 +81,13 @@ export const lockSession = async (page: Page): Promise<void> => {
 
 // Start each test from a clean app state. Playwright creates a fresh browser
 // context per test, so IndexedDB is already empty: no manual deleteDatabase needed.
+// Waits for the boot render to complete so async navigateTo() in main.ts
+// does not race with subsequent test interactions.
 export const resetApp = async (page: Page): Promise<void> => {
   await page.goto('/')
+  await expect(
+    page.getByRole('heading', { name: 'Log attendance' }),
+  ).toBeVisible()
 }
 
 // Delete all data via the danger zone in settings.

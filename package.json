@@ -30,6 +30,7 @@
     "lint:fix": "eslint --fix .",
     "preview": "vite preview",
     "test": "playwright test",
+    "test:coverage": "playwright test",
     "test:report": "playwright show-report",
     "test:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit"

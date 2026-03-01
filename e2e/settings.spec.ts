@@ -177,6 +177,11 @@ test.describe('danger zone', () => {
     await page.getByLabel('Type "delete" to confirm').fill('delete')
     await page.getByRole('button', { name: 'Delete all data' }).click()
 
+    // The onDataWiped callback navigates to Log: wait for that to complete.
+    await expect(
+      page.getByRole('heading', { name: 'Log attendance' }),
+    ).toBeVisible()
+
     // After wipe, navigating to settings should show the "enable" form, not the "enabled" state.
     await navigateTo(page, 'settings')
     await expect(

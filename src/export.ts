@@ -40,6 +40,8 @@ export const download = (
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  // Defer revocation to the next event loop tick so the browser finishes
+  // initiating the download before the blob URL is invalidated.
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 /* v8 ignore stop */
