@@ -7,7 +7,7 @@ import {
 } from '../encryption'
 import { enableEncryption, unlock } from '../crypto'
 import type { UnlockResult } from '../types'
-import { fieldGroup } from './field-group'
+import { fieldGroup } from './fields'
 import { html } from './html'
 
 export const MIN_PIN_LENGTH = 6

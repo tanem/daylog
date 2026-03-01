@@ -1,7 +1,7 @@
 // Attendance tracking section of the settings view.
 
 import { loadAttendanceSettings, saveAttendanceSettings } from '../settings'
-import { fieldGroup } from './field-group'
+import { fieldGroup } from './fields'
 import { html } from './html'
 
 export const buildAttendanceSection = async (): Promise<HTMLElement> => {

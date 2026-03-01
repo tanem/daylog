@@ -2,11 +2,11 @@
 
 import type { AttendanceEntry } from './types'
 import { isEncryptionEnabled, isUnlocked } from './crypto'
-import { startAutoLock, resetAutoLock } from './auto-lock'
-import { renderLogView } from './ui/log-view'
-import { renderHistoryView } from './ui/history-view'
-import { renderSettingsView } from './ui/settings-view'
-import { renderUnlockView } from './ui/unlock-view'
+import { startAutoLock, resetAutoLock } from './autolock'
+import { renderLogView } from './ui/log'
+import { renderHistoryView } from './ui/history'
+import { renderSettingsView } from './ui/settings'
+import { renderUnlockView } from './ui/unlock'
 import './style.css'
 
 type View = 'log' | 'history' | 'settings'

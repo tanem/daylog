@@ -3,7 +3,7 @@
 import type { AttendanceEntry } from '../types'
 import { REASON_LABELS } from '../types'
 import { loadAllEntries, removeEntry } from '../entries'
-import { formatDate } from '../date-utils'
+import { formatDate } from '../dates'
 import { html, htmlList } from './html'
 
 // Render the history list into the given container.

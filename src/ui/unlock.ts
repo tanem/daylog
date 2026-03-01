@@ -2,7 +2,7 @@
 
 import { unlock } from '../crypto'
 import type { UnlockResult } from '../types'
-import { fieldGroup } from './field-group'
+import { fieldGroup } from './fields'
 import { html, htmlList } from './html'
 
 // Format a millisecond duration as a human-readable string.

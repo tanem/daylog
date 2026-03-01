@@ -23,7 +23,7 @@ Keep these instructions minimal: only rules and constraints an agent cannot infe
 - Minimal runtime dependencies. Only add a production dep when it eliminates significant boilerplate around a browser API with poor ergonomics (e.g. `idb` for IndexedDB, `htm` for DOM construction). Justify each addition.
 - No frameworks. Vanilla TypeScript + DOM APIs only.
 - Named exports only. Never use `export default`.
-- Never use `innerHTML`. Build DOM with `html` tagged templates from `src/ui/html.ts` (backed by [htm](https://github.com/developit/htm)) and swap content via `container.replaceChildren(...)`. Use `fieldGroup()` from `src/ui/field-group.ts` for labelled form inputs: prefer `html` for view-level templates.
+- Never use `innerHTML`. Build DOM with `html` tagged templates from `src/ui/html.ts` (backed by [htm](https://github.com/developit/htm)) and swap content via `container.replaceChildren(...)`. Use `fieldGroup()` from `src/ui/fields.ts` for labelled form inputs: prefer `html` for view-level templates.
 - When a template has a single root, cast the result: `html\`<div>…</div>\` as HTMLElement`. For multi-root templates, use `htmlList` which always returns an array.
 - Inline event handlers in templates use lowercase `on*` attributes: `onclick`, `onsubmit`, etc.
 
@@ -41,7 +41,7 @@ Keep these instructions minimal: only rules and constraints an agent cannot infe
 - The `CryptoKey` (`sessionKey`) is never persisted. It is cleared on lock.
 - Destructive actions use a type-to-confirm pattern (e.g. type "delete") or an inline two-step confirmation (click then confirm). Never use `window.confirm()` or `window.alert()`.
 - Maintain strict CSP in `index.html`. No `unsafe-inline` for scripts or styles.
-- Validate date inputs with `isValidDate()` from `src/date-utils.ts` before saving entries.
+- Validate date inputs with `isValidDate()` from `src/dates.ts` before saving entries.
 - PIN change, disable-encryption, and migrate operations use `atomicRekey()` from `src/db.ts` for crash safety: all entries + meta are written in a single IndexedDB transaction.
 - `unlock()` in `src/crypto.ts` enforces exponential backoff on failed attempts and wipes all data after 15 consecutive failures. Failed attempt state is persisted in IndexedDB.
 

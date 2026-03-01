@@ -1,13 +1,10 @@
 // Settings view: composes section modules into the settings page.
 
 import { isEncryptionEnabled } from '../crypto'
-import { buildExportSection } from './export-section'
-import { buildAttendanceSection } from './attendance-section'
-import {
-  buildEncryptionEnabled,
-  buildEncryptionDisabled,
-} from './encryption-section'
-import { buildDangerSection } from './danger-section'
+import { buildExportSection } from './export'
+import { buildAttendanceSection } from './attendance'
+import { buildEncryptionEnabled, buildEncryptionDisabled } from './encryption'
+import { buildDangerSection } from './danger'
 import { html } from './html'
 
 export const renderSettingsView = async (

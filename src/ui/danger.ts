@@ -2,7 +2,7 @@
 
 import { wipeAllData } from '../entries'
 import { lock } from '../crypto'
-import { fieldGroup } from './field-group'
+import { fieldGroup } from './fields'
 import { html } from './html'
 
 export const buildDangerSection = (onDataWiped: () => void): HTMLElement => {

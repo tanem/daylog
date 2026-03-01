@@ -1,7 +1,7 @@
 // Attendance percentage calculator.
 // Pure function: takes entries and settings, returns stats.
 
-import { toISODate } from './date-utils'
+import { toISODate } from './dates'
 import type {
   AttendanceEntry,
   AttendanceSettings,
