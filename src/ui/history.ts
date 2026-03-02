@@ -44,7 +44,10 @@ const entryItem = (
   const dateLabel = formatDate(entry.date)
 
   // Action buttons need references for the delete confirmation swap.
-  const actions = html`<div class="entry-actions"></div>` as HTMLElement
+  // Built without htm: static htm templates cache and reuse the same DOM
+  // node, which causes appendChild to move it to the last entry only.
+  const actions = document.createElement('div')
+  actions.className = 'entry-actions'
 
   const editBtn = html`
     <button
