@@ -1,8 +1,12 @@
 # Daylog
 
+[![build status](https://img.shields.io/github/actions/workflow/status/tanem/daylog/ci.yml?style=flat-square)](https://github.com/tanem/daylog/actions?query=workflow%3ACI)
+
 > Offline PWA for logging your daily work attendance type: office, working from home, leave, sick, or public holiday. All data stays on your device.
 
 **Live:** https://tanem.github.io/daylog/
+
+[Background](#background) | [Usage](#usage) | [Local development](#local-development) | [Tech decisions](#tech-decisions) | [Licence](#licence)
 
 ## Background
 

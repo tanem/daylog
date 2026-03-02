@@ -93,4 +93,6 @@ Follow the principles from [Art of README](https://github.com/hackergrrl/art-of-
 - **Brevity**: as short as possible without losing clarity.
 - **No selling**: state facts, skip superlatives.
 - **Sections to include**: one-liner, background/motivation, usage overview, local development, tech decisions, licence.
-- **Sections that don't apply** (npm-specific): API documentation, install-as-dependency instructions, badge walls.
+- **Badge**: build status only. No npm version, downloads, or bundle size badges (not an npm package).
+- **TOC**: pipe-delimited one-liner linking to each major section, placed after the description.
+- **Sections that don't apply** (npm-specific): API documentation, install-as-dependency instructions.
