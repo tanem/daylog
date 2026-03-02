@@ -69,6 +69,27 @@ test.describe('lock and unlock', () => {
     ).toBeVisible()
   })
 
+  test('clears PIN field after successful unlock', async ({ page }) => {
+    await enableEncryption(page, TEST_PIN)
+
+    await lockSession(page)
+    await navigateTo(page, 'log')
+    await unlockApp(page, TEST_PIN)
+    await expect(
+      page.getByRole('heading', { name: 'Log attendance' }),
+    ).toBeVisible()
+
+    // Lock again and verify the unlock screen shows an empty PIN field.
+    // Navigate away first so navigateTo triggers a click and re-render.
+    await navigateTo(page, 'history')
+    await lockSession(page)
+    await navigateTo(page, 'log')
+    await expect(
+      page.getByRole('heading', { name: 'Unlock Daylog' }),
+    ).toBeVisible()
+    await expect(page.getByLabel('PIN')).toHaveValue('')
+  })
+
   test('shows error for wrong PIN', async ({ page }) => {
     await enableEncryption(page, TEST_PIN)
 
@@ -114,7 +135,10 @@ test.describe('change PIN', () => {
 
     await expect(page.getByText('PIN changed successfully')).toBeVisible()
 
-    // Strength indicator should clear when the form resets.
+    // All PIN fields and the strength indicator should clear after success.
+    await expect(page.getByLabel('Current PIN')).toHaveValue('')
+    await expect(page.getByLabel('New PIN', { exact: true })).toHaveValue('')
+    await expect(page.getByLabel('Confirm new PIN')).toHaveValue('')
     await expect(page.getByText('Fair')).not.toBeVisible()
 
     // Lock and verify the new PIN works.
