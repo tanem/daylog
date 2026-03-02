@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.1](https://github.com/tanem/daylog/compare/v1.0.0...v1.0.1) (2026-03-02)
+
+
+### Bug Fixes
+
+* clear stale DOM state after PIN change and encryption toggle ([b3d2b1d](https://github.com/tanem/daylog/commit/b3d2b1dd5965f0b8a9601fb5470b3c4778104229))
+* regenerate PWA icons with D favicon design ([f3da484](https://github.com/tanem/daylog/commit/f3da484b351e6adf2f2a40405c72e620a38d69ac))
+* show edit and delete buttons for all history entries ([ce218f1](https://github.com/tanem/daylog/commit/ce218f1f8cbc165811c2ce2ccc43d2e6e25f57fd))
+
 ## 1.0.0 (2026-03-02)
 
 
