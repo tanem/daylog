@@ -148,6 +148,7 @@ export const buildEncryptionEnabled = (
     }
     try {
       await disableEncryption()
+      disablePinInput.value = ''
       await rerender()
     } catch {
       /* v8 ignore start */
@@ -221,6 +222,8 @@ export const buildEncryptionDisabled = (
     try {
       await enableEncryption(pin)
       await migrateEntriesToEncrypted()
+      pinInput.value = ''
+      confirmInput.value = ''
       await rerender()
     } catch {
       /* v8 ignore start */

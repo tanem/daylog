@@ -63,6 +63,7 @@ export const renderUnlockView = (
     try {
       const result = await unlock(pin)
       if (result.success) {
+        pinInput.value = ''
         onUnlocked()
       } else {
         showResult(result)
