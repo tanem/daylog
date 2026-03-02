@@ -13,9 +13,8 @@ export const renderSettingsView = async (
 ): Promise<void> => {
   const encEnabled = await isEncryptionEnabled()
 
-  const rerender = (): void => {
+  const rerender = (): Promise<void> =>
     renderSettingsView(container, onDataWiped)
-  }
 
   const encSection = encEnabled
     ? buildEncryptionEnabled(rerender)
