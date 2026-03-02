@@ -56,7 +56,9 @@ const unlockErrorMessage = (result: UnlockResult, fallback: string): string => {
 }
 
 // Rendered when encryption is already enabled.
-export const buildEncryptionEnabled = (rerender: () => void): HTMLElement => {
+export const buildEncryptionEnabled = (
+  rerender: () => Promise<void>,
+): HTMLElement => {
   // Change PIN form.
   const changePinMsg = html`<p
     class="pin-message"
@@ -111,6 +113,9 @@ export const buildEncryptionEnabled = (rerender: () => void): HTMLElement => {
       currentPinInput.value = ''
       newPinInput.value = ''
       confirmNewPinInput.value = ''
+      // Clearing .value programmatically does not fire the input event,
+      // so the strength indicator would retain stale text. Dispatch manually.
+      newPinInput.dispatchEvent(new Event('input'))
     } catch {
       /* v8 ignore start */
       changePinMsg.textContent = 'Failed to change PIN. Please try again.'
@@ -143,8 +148,7 @@ export const buildEncryptionEnabled = (rerender: () => void): HTMLElement => {
     }
     try {
       await disableEncryption()
-      disableMsg.textContent = ''
-      rerender()
+      await rerender()
     } catch {
       /* v8 ignore start */
       disableMsg.textContent = 'Failed to disable encryption. Please try again.'
@@ -183,7 +187,9 @@ export const buildEncryptionEnabled = (rerender: () => void): HTMLElement => {
 }
 
 // Rendered when encryption is not yet enabled.
-export const buildEncryptionDisabled = (rerender: () => void): HTMLElement => {
+export const buildEncryptionDisabled = (
+  rerender: () => Promise<void>,
+): HTMLElement => {
   const pinInput = html`
     <input
       autocomplete="off"
@@ -215,9 +221,7 @@ export const buildEncryptionDisabled = (rerender: () => void): HTMLElement => {
     try {
       await enableEncryption(pin)
       await migrateEntriesToEncrypted()
-      pinMsg.textContent = 'Encryption enabled.'
-      pinMsg.classList.add('pin-message-success')
-      rerender()
+      await rerender()
     } catch {
       /* v8 ignore start */
       pinMsg.textContent = 'Failed to enable encryption. Please try again.'

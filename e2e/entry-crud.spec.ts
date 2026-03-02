@@ -56,6 +56,24 @@ test.describe('logging entries', () => {
     await expect(dates.nth(1)).toContainText('19')
     await expect(dates.nth(2)).toContainText('18')
   })
+
+  test('shows edit and delete buttons for every entry', async ({ page }) => {
+    await saveEntry(page, { date: '2026-02-18', reason: 'office' })
+    await saveEntry(page, { date: '2026-02-19', reason: 'wfh' })
+    await saveEntry(page, { date: '2026-02-20', reason: 'leave' })
+
+    const items = page.locator('.entry-item')
+    await expect(items).toHaveCount(3)
+
+    for (let i = 0; i < 3; i++) {
+      await expect(
+        items.nth(i).getByRole('button', { name: /Edit entry for/ }),
+      ).toBeVisible()
+      await expect(
+        items.nth(i).getByRole('button', { name: /Delete entry for/ }),
+      ).toBeVisible()
+    }
+  })
 })
 
 test.describe('editing entries', () => {

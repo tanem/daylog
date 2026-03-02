@@ -114,6 +114,9 @@ test.describe('change PIN', () => {
 
     await expect(page.getByText('PIN changed successfully')).toBeVisible()
 
+    // Strength indicator should clear when the form resets.
+    await expect(page.getByText('Fair')).not.toBeVisible()
+
     // Lock and verify the new PIN works.
     await lockSession(page)
     await navigateTo(page, 'log')
@@ -157,6 +160,14 @@ test.describe('disable encryption', () => {
     await expect(
       page.getByRole('button', { name: 'Enable encryption' }),
     ).toBeVisible()
+
+    // Enabled-state content should be fully replaced by the disabled view.
+    await expect(
+      page.getByText('Encryption is enabled for this device.'),
+    ).not.toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Change PIN' }),
+    ).not.toBeVisible()
 
     // Entry should still be visible in history (decrypted back to plaintext).
     await navigateTo(page, 'history')
