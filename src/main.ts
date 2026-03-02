@@ -1,0 +1,77 @@
+// Application entry point.
+
+import type { AttendanceEntry } from './types'
+import { isEncryptionEnabled, isUnlocked } from './crypto'
+import { startAutoLock, resetAutoLock } from './autolock'
+import { renderLogView } from './ui/log'
+import { renderHistoryView } from './ui/history'
+import { renderSettingsView } from './ui/settings'
+import { renderUnlockView } from './ui/unlock'
+import './style.css'
+
+type View = 'log' | 'history' | 'settings'
+
+const mainContent = document.getElementById('main-content')!
+const navButtons = document.querySelectorAll<HTMLButtonElement>('.nav-btn')
+
+let currentView: View = 'log'
+
+const navigateTo = async (
+  view: View,
+  editEntry?: AttendanceEntry,
+): Promise<void> => {
+  currentView = view
+
+  navButtons.forEach((btn) => {
+    const isActive = btn.dataset.view === view
+    btn.classList.toggle('active', isActive)
+    if (isActive) {
+      btn.setAttribute('aria-current', 'page')
+    } else {
+      btn.removeAttribute('aria-current')
+    }
+  })
+
+  const encrypted = await isEncryptionEnabled()
+  if (encrypted && !isUnlocked()) {
+    renderUnlockView(mainContent, () => {
+      resetAutoLock()
+      navigateTo(view)
+    })
+    focusHeading()
+    return
+  }
+
+  // Reset the auto-lock timer on each navigation.
+  if (encrypted) resetAutoLock()
+
+  if (view === 'log') {
+    await renderLogView(mainContent, () => navigateTo('history'), editEntry)
+  } else if (view === 'history') {
+    await renderHistoryView(mainContent, (entry) => navigateTo('log', entry))
+  } else {
+    await renderSettingsView(mainContent, () => navigateTo('log'))
+  }
+
+  focusHeading()
+}
+
+// Move focus to the view heading so screen readers announce the new view.
+const focusHeading = (): void => {
+  const h = mainContent.querySelector('h2')
+  /* v8 ignore start */
+  if (!h) return
+  /* v8 ignore stop */
+  h.setAttribute('tabindex', '-1')
+  h.focus()
+}
+
+navButtons.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const view = btn.dataset.view as View
+    navigateTo(view)
+  })
+})
+
+startAutoLock(() => navigateTo(currentView))
+navigateTo(currentView)
