@@ -12,11 +12,9 @@ test.describe('attendance tracking', () => {
     await navigateTo(page, 'settings')
     await page.getByLabel('Enable attendance tracking').check()
 
-    // Target and weeks fields should now be visible.
     await expect(page.getByLabel('Target %')).toBeVisible()
     await expect(page.getByLabel('Rolling window (weeks)')).toBeVisible()
 
-    // Navigate to Log and verify the attendance banner appears.
     await navigateTo(page, 'log')
     await expect(
       page.getByRole('status', { name: 'Attendance summary' }),
@@ -65,15 +63,12 @@ test.describe('attendance tracking', () => {
     await saveEntry(page, { date: '2026-02-24', reason: 'office' })
     await saveEntry(page, { date: '2026-02-25', reason: 'wfh' })
 
-    // Enable attendance tracking.
     await navigateTo(page, 'settings')
     await page.getByLabel('Enable attendance tracking').check()
 
-    // Go to Log view and check the banner shows a percentage.
     await navigateTo(page, 'log')
     const banner = page.getByRole('status', { name: 'Attendance summary' })
     await expect(banner).toBeVisible()
-    // The banner should contain a percentage number.
     await expect(banner.locator('.attendance-percentage')).toContainText('%')
   })
 })
@@ -88,14 +83,12 @@ test.describe('export', () => {
 
     await navigateTo(page, 'settings')
 
-    // Listen for download events.
     const downloadPromise = page.waitForEvent('download')
     await page.getByRole('button', { name: 'Export as JSON' }).click()
     const download = await downloadPromise
 
     expect(download.suggestedFilename()).toMatch(/daylog-export-.*\.json$/)
 
-    // Verify the content structure.
     const content = await (await download.createReadStream()).toArray()
     const text = Buffer.concat(content).toString()
     const parsed = JSON.parse(text) as Array<Record<string, unknown>>
@@ -150,7 +143,6 @@ test.describe('danger zone', () => {
   test('requires typing "delete" to confirm', async ({ page }) => {
     await navigateTo(page, 'settings')
     await page.getByRole('button', { name: 'Delete all data' }).click()
-    // The error message appears after clicking without typing "delete".
     await expect(page.getByText('Type "delete" to confirm.')).toBeVisible()
   })
 
@@ -166,7 +158,6 @@ test.describe('danger zone', () => {
       page.getByRole('heading', { name: 'Log attendance' }),
     ).toBeVisible()
 
-    // Verify history is empty.
     await navigateTo(page, 'history')
     await expect(page.getByText('No entries yet')).toBeVisible()
   })

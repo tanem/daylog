@@ -1,6 +1,6 @@
 # Daylog
 
-Offline PWA for logging your daily work attendance type: office, working from home, leave, sick, or public holiday. All data stays on your device.
+> Offline PWA for logging your daily work attendance type: office, working from home, leave, sick, or public holiday. All data stays on your device.
 
 **Live:** https://tanem.github.io/daylog/
 
@@ -21,41 +21,9 @@ Data is stored in IndexedDB with optional PIN-based encryption (AES-GCM, PBKDF2 
 
 ### PIN protection
 
-Enable PIN encryption in Settings to encrypt all entries at rest. The minimum PIN length is 6 characters. Once enabled:
+Enable PIN encryption in Settings to encrypt all entries at rest (AES-256-GCM). The session auto-locks after inactivity or when the tab is backgrounded. After 15 consecutive failed unlock attempts, all data is permanently erased.
 
-- Existing plaintext entries are automatically encrypted.
-- The session auto-locks after 5 minutes of inactivity or when the browser tab is backgrounded.
-- You can change your PIN or disable encryption from Settings (requires entering the current PIN).
-- Exports are always plaintext: a confirmation prompt warns you before exporting encrypted data.
-- After 15 consecutive failed unlock attempts, all data is permanently erased.
-
-## Security model
-
-Daylog is designed for casual protection of personal attendance data on a single device. It is not intended to resist a sophisticated attacker with full filesystem access and unlimited time.
-
-### What is encrypted
-
-When PIN protection is enabled, each attendance entry (date, reason, notes) is individually encrypted with AES-256-GCM. The encryption key is derived from your PIN via PBKDF2 with 600,000 iterations of SHA-256.
-
-### What is not encrypted
-
-The following metadata remains in plaintext in IndexedDB:
-
-- The number of entries and their random UUIDs (IDs carry no semantic information).
-- Encryption parameters: salt, verification tag.
-- Attendance tracking settings (enabled flag, week window, target percentage).
-
-### Brute-force protection
-
-Failed unlock attempts trigger exponential backoff: no delay for the first 4, then 30 seconds, 5 minutes, and 30 minutes. After 15 consecutive failures, all data is permanently erased (matching iOS device behaviour).
-
-### Exports
-
-Exported files (JSON and CSV) are always plaintext regardless of encryption status. When encryption is enabled, the app requires a two-step confirmation before downloading.
-
-### Network
-
-Daylog makes no network requests after the initial load. All data stays in the browser's IndexedDB. There is no backend, analytics, or telemetry.
+See [docs/security.md](docs/security.md) for the full security model: what is and isn't encrypted, brute-force backoff timings, and export behaviour.
 
 ## Local development
 

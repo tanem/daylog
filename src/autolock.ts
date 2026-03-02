@@ -2,7 +2,7 @@
 
 import { isUnlocked, lock } from './crypto'
 
-const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000
 
 let timeoutId: ReturnType<typeof setTimeout> | null = null
 let onLockCallback: (() => void) | null = null

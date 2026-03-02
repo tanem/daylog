@@ -36,7 +36,6 @@ const getCooldownMs = (attempts: number): number => {
 // Session-scoped key. Never persisted.
 let sessionKey: CryptoKey | null = null
 
-// Derive an AES-GCM key from a PIN and salt.
 const deriveKey = async (pin: string, salt: Uint8Array): Promise<CryptoKey> => {
   const encoder = new TextEncoder()
   const keyMaterial = await crypto.subtle.importKey(
@@ -60,7 +59,6 @@ const deriveKey = async (pin: string, salt: Uint8Array): Promise<CryptoKey> => {
   )
 }
 
-// Encrypt the sentinel string with the given key, returning iv + ciphertext.
 const createVerificationTag = async (
   key: CryptoKey,
 ): Promise<{ iv: Uint8Array; tag: ArrayBuffer }> => {
@@ -70,7 +68,6 @@ const createVerificationTag = async (
   return { iv, tag }
 }
 
-// Enable encryption: generate a salt, derive the key, create verification tag, persist meta.
 export const enableEncryption = async (pin: string): Promise<void> => {
   if (pin.length < MIN_PIN_LENGTH) throw new Error('PIN too short.')
   const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH))
@@ -85,14 +82,12 @@ export const enableEncryption = async (pin: string): Promise<void> => {
   await setEncryptionMeta(meta)
 }
 
-// Unlock an existing encrypted store with the given PIN.
 // Enforces exponential backoff after repeated failures and wipes data at MAX_ATTEMPTS.
 export const unlock = async (pin: string): Promise<UnlockResult> => {
   const meta = await getEncryptionMeta()
   if (!meta.enabled || !meta.salt) return { success: false }
   if (!meta.verificationIv || !meta.verificationTag) return { success: false }
 
-  // Check brute-force throttle state.
   const attempts = await getFailedAttempts()
   const cooldown = getCooldownMs(attempts.count)
   if (cooldown > 0) {
@@ -104,7 +99,6 @@ export const unlock = async (pin: string): Promise<UnlockResult> => {
 
   const key = await deriveKey(pin, meta.salt)
 
-  // Verify the PIN against the stored verification tag.
   try {
     const plaintext = await crypto.subtle.decrypt(
       { iv: meta.verificationIv as BufferSource, name: 'AES-GCM' },
@@ -150,8 +144,6 @@ export const isEncryptionEnabled = async (): Promise<boolean> => {
   return meta.enabled
 }
 
-// Change the encryption PIN. Session must be unlocked.
-// Generates a new salt and key, updates the verification tag.
 // Returns the new meta for the caller to persist atomically with re-encrypted entries.
 export const changePin = async (newPin: string): Promise<EncryptionMeta> => {
   if (!sessionKey) throw new Error('Session is locked.')
@@ -167,7 +159,6 @@ export const changePin = async (newPin: string): Promise<EncryptionMeta> => {
   }
 }
 
-// Encrypt an entry, returning an envelope suitable for IndexedDB.
 export const encryptEntry = async (
   entry: AttendanceEntry,
 ): Promise<EncryptedEnvelope> => {
@@ -182,7 +173,6 @@ export const encryptEntry = async (
   return { id: entry.id, iv, ciphertext }
 }
 
-// Decrypt an envelope back into an AttendanceEntry.
 export const decryptEntry = async (
   envelope: EncryptedEnvelope,
 ): Promise<AttendanceEntry> => {

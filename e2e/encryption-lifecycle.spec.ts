@@ -23,7 +23,6 @@ test.describe('enabling encryption', () => {
 
     await enableEncryption(page, TEST_PIN)
 
-    // The section should now show the "enabled" state.
     await expect(
       page.getByText('Encryption is enabled for this device.'),
     ).toBeVisible()
@@ -64,7 +63,6 @@ test.describe('lock and unlock', () => {
       page.getByRole('heading', { name: 'Unlock Daylog' }),
     ).toBeVisible()
 
-    // Unlock with the correct PIN.
     await unlockApp(page, TEST_PIN)
     await expect(
       page.getByRole('heading', { name: 'Log attendance' }),
@@ -80,7 +78,6 @@ test.describe('lock and unlock', () => {
     await unlockApp(page, 'wrongpin123')
     await expect(page.getByText('Check your PIN')).toBeVisible()
 
-    // Can still unlock with the correct PIN.
     await page.getByLabel('PIN').fill(TEST_PIN)
     await page.getByRole('button', { name: 'Unlock' }).click()
     await expect(
@@ -100,7 +97,6 @@ test.describe('lock and unlock', () => {
     await navigateTo(page, 'history')
     await unlockApp(page, TEST_PIN)
 
-    // Entry should still be visible.
     await expect(page.getByText('Office')).toBeVisible()
     await expect(page.getByText('Test note')).toBeVisible()
   })
@@ -155,11 +151,9 @@ test.describe('disable encryption', () => {
     await saveEntry(page, { date: '2026-02-20', reason: 'office' })
     await enableEncryption(page, TEST_PIN)
 
-    // Disable encryption.
     await page.getByLabel('PIN', { exact: true }).fill(TEST_PIN)
     await page.getByRole('button', { name: 'Disable encryption' }).click()
 
-    // Section should re-render as the disabled/setup state.
     await expect(
       page.getByRole('button', { name: 'Enable encryption' }),
     ).toBeVisible()

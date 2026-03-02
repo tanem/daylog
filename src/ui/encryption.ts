@@ -23,7 +23,6 @@ export const pinStrength = (pin: string): Strength => {
   return 'weak'
 }
 
-// Create a strength indicator element and bind it to an input's input event.
 const bindStrengthIndicator = (input: HTMLInputElement): HTMLElement => {
   const indicator = html`<p
     class="pin-strength"
@@ -43,7 +42,6 @@ const bindStrengthIndicator = (input: HTMLInputElement): HTMLElement => {
   return indicator
 }
 
-// Format a failed unlock result as a user-facing message.
 const unlockErrorMessage = (result: UnlockResult, fallback: string): string => {
   if (result.wiped) {
     return 'All data has been erased after too many failed attempts.'

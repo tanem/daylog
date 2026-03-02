@@ -2,11 +2,9 @@
 
 import type { AttendanceEntry } from './types'
 
-// Export entries as a formatted JSON string.
 export const toJSON = (entries: AttendanceEntry[]): string =>
   JSON.stringify(entries, null, 2)
 
-// Export entries as CSV with a header row.
 export const toCSV = (entries: AttendanceEntry[]): string => {
   const header = 'id,date,reason,notes'
   const rows = entries.map((e) => {
@@ -16,7 +14,6 @@ export const toCSV = (entries: AttendanceEntry[]): string => {
   return [header, ...rows].join('\n')
 }
 
-// Wrap a field in double quotes if it contains commas, quotes, or newlines.
 const csvField = (value: string): string => {
   if (/[",\n]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`
@@ -24,8 +21,6 @@ const csvField = (value: string): string => {
   return value
 }
 
-// Trigger a file download in the browser.
-// jsdom does not support blob URLs, so this is mocked in tests.
 /* v8 ignore start */
 export const download = (
   content: string,

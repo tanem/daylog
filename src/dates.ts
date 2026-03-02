@@ -8,10 +8,8 @@ export const toISODate = (d: Date): string => {
   return `${y}-${m}-${day}`
 }
 
-// Return today's date in ISO format (YYYY-MM-DD).
 export const todayISO = (): string => toISODate(new Date())
 
-// Format an ISO date string for display (NZ locale).
 export const formatDate = (iso: string): string =>
   new Date(`${iso}T00:00:00`).toLocaleDateString('en-NZ', {
     weekday: 'short',
@@ -20,7 +18,6 @@ export const formatDate = (iso: string): string =>
     year: 'numeric',
   })
 
-// Validate that a string is a real YYYY-MM-DD calendar date.
 export const isValidDate = (dateStr: string): boolean => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false
   const d = new Date(`${dateStr}T00:00:00`)

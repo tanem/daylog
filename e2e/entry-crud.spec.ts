@@ -15,7 +15,6 @@ test.describe('logging entries', () => {
       notes: 'Standup at 9am',
     })
 
-    // After save, we land on History.
     await expect(page.getByRole('heading', { name: 'History' })).toBeVisible()
     await expect(page.getByText('Office')).toBeVisible()
     await expect(page.getByText('Standup at 9am')).toBeVisible()
@@ -70,19 +69,16 @@ test.describe('editing entries', () => {
     // Now in History: click Edit.
     await page.getByRole('button', { name: /Edit entry for/ }).click()
 
-    // Should be on Log view with pre-filled values.
     await expect(
       page.getByRole('heading', { name: 'Edit entry' }),
     ).toBeVisible()
     await expect(page.getByLabel('Date')).toHaveValue('2026-02-20')
     await expect(page.getByLabel('Notes')).toHaveValue('Original note')
 
-    // Change reason and notes.
     await page.getByLabel('Reason').selectOption('wfh')
     await page.getByLabel('Notes').fill('Updated note')
     await page.getByRole('button', { name: 'Update' }).click()
 
-    // Back in History with updated values.
     await expect(page.getByRole('heading', { name: 'History' })).toBeVisible()
     await expect(page.getByText('WFH')).toBeVisible()
     await expect(page.getByText('Updated note')).toBeVisible()
@@ -109,7 +105,6 @@ test.describe('deleting entries', () => {
     await page.getByRole('button', { name: /Delete entry for/ }).click()
     await page.getByRole('button', { name: 'Cancel' }).click()
 
-    // Entry still present.
     await expect(page.getByText('Office')).toBeVisible()
   })
 })

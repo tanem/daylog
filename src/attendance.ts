@@ -1,5 +1,4 @@
 // Attendance percentage calculator.
-// Pure function: takes entries and settings, returns stats.
 
 import { toISODate } from './dates'
 import type {
@@ -8,7 +7,6 @@ import type {
   AttendanceStats,
 } from './types'
 
-// Check whether a Date falls on a weekday (Mon–Fri).
 const isWeekday = (d: Date): boolean => {
   const dow = d.getDay()
   return dow >= 1 && dow <= 5

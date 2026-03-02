@@ -6,7 +6,6 @@ import { loadAllEntries, removeEntry } from '../entries'
 import { formatDate } from '../dates'
 import { html, htmlList } from './html'
 
-// Render the history list into the given container.
 export const renderHistoryView = async (
   container: HTMLElement,
   onEdit: (entry: AttendanceEntry) => void,
@@ -119,7 +118,6 @@ const reasonLabel = (reason: string): string =>
   /* v8 ignore next -- defensive fallback for unknown reason values */
   REASON_LABELS[reason as keyof typeof REASON_LABELS]?.short ?? reason
 
-// Re-render the view after a deletion.
 const refresh = async (
   container: HTMLElement,
   onEdit: (entry: AttendanceEntry) => void,

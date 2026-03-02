@@ -16,14 +16,12 @@ const navButtons = document.querySelectorAll<HTMLButtonElement>('.nav-btn')
 
 let currentView: View = 'log'
 
-// Navigate to a view by name.
 const navigateTo = async (
   view: View,
   editEntry?: AttendanceEntry,
 ): Promise<void> => {
   currentView = view
 
-  // Update nav state.
   navButtons.forEach((btn) => {
     const isActive = btn.dataset.view === view
     btn.classList.toggle('active', isActive)
@@ -34,7 +32,6 @@ const navigateTo = async (
     }
   })
 
-  // If encryption is enabled but the session is locked, show unlock first.
   const encrypted = await isEncryptionEnabled()
   if (encrypted && !isUnlocked()) {
     renderUnlockView(mainContent, () => {
@@ -69,7 +66,6 @@ const focusHeading = (): void => {
   h.focus()
 }
 
-// Wire up nav buttons.
 navButtons.forEach((btn) => {
   btn.addEventListener('click', () => {
     const view = btn.dataset.view as View
@@ -77,6 +73,5 @@ navButtons.forEach((btn) => {
   })
 })
 
-// Boot.
 startAutoLock(() => navigateTo(currentView))
 navigateTo(currentView)

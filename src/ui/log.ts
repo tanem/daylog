@@ -12,7 +12,6 @@ import { html } from './html'
 const DEFAULT_PLACEHOLDER = 'Optional notes…'
 const WFH_PLACEHOLDER = 'Reason for working from home…'
 
-// Build the attendance stats banner element.
 const buildBanner = (
   percentage: number,
   attended: number,
@@ -42,7 +41,6 @@ const buildBanner = (
   ` as HTMLElement
 }
 
-// Render the log form into the given container.
 // If `existing` is provided, pre-fill the form for editing.
 export const renderLogView = async (
   container: HTMLElement,
@@ -116,7 +114,6 @@ export const renderLogView = async (
     }
   }
 
-  // Attendance banner (only when tracking is enabled).
   const settings = await loadAttendanceSettings()
   const children: (HTMLElement | string)[] = []
 

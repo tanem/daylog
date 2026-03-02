@@ -2,7 +2,6 @@
 
 export type Reason = 'office' | 'wfh' | 'leave' | 'sick' | 'public-holiday'
 
-// Display labels for each reason type.
 export const REASON_LABELS: Record<Reason, { label: string; short: string }> = {
   office: { label: 'Office', short: 'Office' },
   wfh: { label: 'Working from home', short: 'WFH' },
@@ -18,21 +17,18 @@ export interface AttendanceEntry {
   notes?: string
 }
 
-// Shape stored in IndexedDB when encryption is enabled.
 export interface EncryptedEnvelope {
   id: string
   iv: Uint8Array
   ciphertext: ArrayBuffer
 }
 
-// Attendance tracking settings stored in IndexedDB.
 export interface AttendanceSettings {
   enabled: boolean
   weeks: number
   percentage: number
 }
 
-// Result of an attendance percentage calculation.
 export interface AttendanceStats {
   attended: number
   total: number
@@ -54,7 +50,6 @@ export interface FailedAttempts {
   lastAttemptAt: number
 }
 
-// Result of an unlock attempt, including throttling state.
 export interface UnlockResult {
   success: boolean
   locked?: boolean

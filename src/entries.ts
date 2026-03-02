@@ -4,10 +4,8 @@ import type { AttendanceEntry, EncryptedEnvelope } from './types'
 import * as db from './db'
 import * as enc from './crypto'
 
-// Generate a unique ID for a new entry.
 const newId = (): string => crypto.randomUUID()
 
-// Save a new or existing entry. Encrypts if encryption is enabled.
 export const saveEntry = async (
   entry: Omit<AttendanceEntry, 'id'> & { id?: string },
 ): Promise<AttendanceEntry> => {
@@ -22,7 +20,6 @@ export const saveEntry = async (
   return full
 }
 
-// Retrieve all entries, decrypting if necessary.
 export const loadAllEntries = async (): Promise<AttendanceEntry[]> => {
   const raw = await db.getAllEntries()
   const encrypted = await enc.isEncryptionEnabled()
@@ -41,8 +38,7 @@ export const loadAllEntries = async (): Promise<AttendanceEntry[]> => {
   return results
 }
 
-// Prepare an entry for storage (encrypt if needed) without writing it.
-// Used by encryption.ts for batch operations.
+// Does not write to IndexedDB: used by encryption.ts for batch operations.
 export const prepareEntry = async (
   entry: AttendanceEntry,
 ): Promise<AttendanceEntry | EncryptedEnvelope> => {

@@ -5,7 +5,6 @@ import type { UnlockResult } from '../types'
 import { fieldGroup } from './fields'
 import { html, htmlList } from './html'
 
-// Format a millisecond duration as a human-readable string.
 const formatWait = (ms: number): string => {
   const seconds = Math.ceil(ms / 1000)
   if (seconds < 60) return `${seconds} seconds`

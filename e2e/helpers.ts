@@ -31,7 +31,6 @@ export const navigateTo = async (page: Page, view: View): Promise<void> => {
   ).toBeVisible()
 }
 
-// Fill and submit the log form. Navigates to Log view first.
 export const saveEntry = async (
   page: Page,
   opts: { date?: string; reason?: string; notes?: string },
@@ -52,7 +51,6 @@ export const saveEntry = async (
   await expect(page.getByRole('heading', { name: 'History' })).toBeVisible()
 }
 
-// Enable encryption from the settings view by filling in PIN fields.
 export const enableEncryption = async (
   page: Page,
   pin: string,
@@ -90,7 +88,6 @@ export const resetApp = async (page: Page): Promise<void> => {
   ).toBeVisible()
 }
 
-// Delete all data via the danger zone in settings.
 export const clearData = async (page: Page): Promise<void> => {
   await navigateTo(page, 'settings')
   await page.getByLabel('Type "delete" to confirm').fill('delete')
