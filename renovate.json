@@ -3,7 +3,8 @@
   "extends": [
     "config:js-app",
     "helpers:pinGitHubActionDigests",
-    ":maintainLockFilesWeekly"
+    ":maintainLockFilesWeekly",
+    ":rebaseStalePrs"
   ],
   "automergeStrategy": "squash",
   "packageRules": [
