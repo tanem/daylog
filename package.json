@@ -1,6 +1,6 @@
 {
   "name": "daylog",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Log your daily work attendance. All data stays on your device.",
   "private": true,
   "type": "module",

@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.3](https://github.com/tanem/daylog/compare/v1.0.2...v1.0.3) (2026-03-03)
+
+
+### Bug Fixes
+
+* add missing space before target percentage in attendance banner ([14c7e0e](https://github.com/tanem/daylog/commit/14c7e0e03f654e2110b1acdcae31295a4e7e5625))
+* **deps:** pin dependencies ([9947362](https://github.com/tanem/daylog/commit/9947362fc5b13c967646ec9ad11be9ce4b3f0cd3))
+* **deps:** pin dependencies ([0311053](https://github.com/tanem/daylog/commit/0311053d74fb8487e26e886fca7be5d98d4be1b1))
+
 ## [1.0.2](https://github.com/tanem/daylog/compare/v1.0.1...v1.0.2) (2026-03-02)
 
 
