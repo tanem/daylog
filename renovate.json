@@ -6,6 +6,7 @@
     ":maintainLockFilesWeekly",
     ":rebaseStalePrs"
   ],
+  "semanticCommitScope": null,
   "automergeStrategy": "squash",
   "packageRules": [
     {
