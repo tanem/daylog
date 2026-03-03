@@ -34,8 +34,7 @@ const buildBanner = (
         ${percentage}%
       </div>
       <div class="attendance-detail">
-        ${attended} of ${total} days in office (last ${weeks} weeks, target
-        ${target}%)
+        ${`${attended} of ${total} days in office (last ${weeks} weeks, target ${target}%)`}
       </div>
     </div>
   ` as HTMLElement
