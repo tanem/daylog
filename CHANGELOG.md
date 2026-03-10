@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/tanem/daylog/compare/v1.0.3...v1.1.0) (2026-03-10)
+
+
+### Features
+
+* add light/dark theme toggle and UI refresh ([dac3910](https://github.com/tanem/daylog/commit/dac39109a93b89161028e5f7990c34aae3c40352))
+
 ## [1.0.3](https://github.com/tanem/daylog/compare/v1.0.2...v1.0.3) (2026-03-03)
 
 
