@@ -3,6 +3,7 @@
 import type { AttendanceEntry } from './types'
 import { isEncryptionEnabled, isUnlocked } from './crypto'
 import { startAutoLock, resetAutoLock } from './autolock'
+import { initTheme, initThemeToggle } from './theme'
 import { renderLogView } from './ui/log'
 import { renderHistoryView } from './ui/history'
 import { renderSettingsView } from './ui/settings'
@@ -74,4 +75,8 @@ navButtons.forEach((btn) => {
 })
 
 startAutoLock(() => navigateTo(currentView))
-navigateTo(currentView)
+
+// Initialise theme before first render to avoid flash of wrong colours.
+const themeToggle = document.getElementById('theme-toggle') as HTMLButtonElement
+initThemeToggle(themeToggle)
+initTheme().then(() => navigateTo(currentView))

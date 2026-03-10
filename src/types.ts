@@ -56,3 +56,5 @@ export interface UnlockResult {
   retryAfterMs?: number
   wiped?: boolean
 }
+
+export type ThemePreference = 'auto' | 'light' | 'dark'

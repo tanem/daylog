@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en-NZ">
+<html lang="en-NZ" data-theme="auto">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,7 +17,10 @@
     <a href="#main-content" class="skip-link">Skip to content</a>
     <div id="app">
       <header>
-        <h1>Daylog</h1>
+        <div class="header-row">
+          <h1>Daylog</h1>
+          <button class="theme-toggle" id="theme-toggle" type="button"></button>
+        </div>
         <nav id="main-nav" aria-label="Main">
           <button data-view="log" class="nav-btn active" aria-current="page">
             Log

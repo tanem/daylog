@@ -8,6 +8,7 @@ import type {
   EncryptedEnvelope,
   EncryptionMeta,
   FailedAttempts,
+  ThemePreference,
 } from './types'
 
 const DB_NAME = 'daylog'
@@ -162,6 +163,22 @@ export const atomicRekey = async (
     await metaStore.put({ key: 'encryption', ...meta })
   }
   await tx.done
+}
+
+// ---------- Theme preference ----------
+
+export const getThemePreference = async (): Promise<ThemePreference> => {
+  const db = await getDb()
+  const result = await db.get('meta', 'theme')
+  if (!result) return 'auto'
+  return (result as unknown as { mode: ThemePreference }).mode
+}
+
+export const setThemePreference = async (
+  mode: ThemePreference,
+): Promise<void> => {
+  const db = await getDb()
+  await db.put('meta', { key: 'theme', mode })
 }
 
 // ---------- Full wipe ----------
