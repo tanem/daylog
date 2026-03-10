@@ -50,7 +50,8 @@
   },
   "dependencies": {
     "htm": "3.1.1",
-    "idb": "8.0.3"
+    "idb": "8.0.3",
+    "open-props": "^1.7.23"
   },
   "overrides": {
     "serialize-javascript": "7.0.4"

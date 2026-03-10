@@ -20,6 +20,9 @@ const buildBanner = (
   weeks: number,
 ): HTMLElement => {
   const ok = percentage >= target
+  const fillClass = ok ? 'attendance-fill-ok' : 'attendance-fill-below'
+  // Cap at 100% for display.
+  const fillWidth = Math.min(percentage, 100)
   return html`
     <div
       class="attendance-banner"
@@ -32,6 +35,23 @@ const buildBanner = (
           : 'attendance-below'}"
       >
         ${percentage}%
+      </div>
+      <div
+        class="attendance-bar"
+        role="progressbar"
+        aria-valuenow=${percentage}
+        aria-valuemin=${0}
+        aria-valuemax=${100}
+      >
+        <div
+          class="attendance-fill ${fillClass}"
+          style="width: ${fillWidth}%"
+        ></div>
+        <div
+          class="attendance-target"
+          style="left: ${target}%"
+          aria-label="Target: ${target}%"
+        ></div>
       </div>
       <div class="attendance-detail">
         ${`${attended} of ${total} days in office (last ${weeks} weeks, target ${target}%)`}

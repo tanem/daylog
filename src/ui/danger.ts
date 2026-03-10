@@ -33,7 +33,7 @@ export const buildDangerSection = (onDataWiped: () => void): HTMLElement => {
   }
 
   return html`
-    <div class="settings-group">
+    <div class="settings-group settings-group-danger">
       <h3>Danger zone</h3>
       <p>Permanently remove all data from this device.</p>
       <form class="pin-form" onsubmit=${onDelete}>
