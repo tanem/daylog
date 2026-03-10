@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.1](https://github.com/tanem/daylog/compare/v1.1.0...v1.1.1) (2026-03-10)
+
+
+### Bug Fixes
+
+* pin dependency open-props to 1.7.23 ([#33](https://github.com/tanem/daylog/issues/33)) ([c4ad45c](https://github.com/tanem/daylog/commit/c4ad45ce6fe1acdfde4c3ea422853954116f2454))
+* use CSSOM for inline styles to avoid CSP violations ([e369a3a](https://github.com/tanem/daylog/commit/e369a3a2e121f6e32006de34bdde6a59c29df955))
+* use CSSOM for inline styles to avoid CSP violations ([bfb42c9](https://github.com/tanem/daylog/commit/bfb42c9f49392586e999010036d658614018ee36))
+
 ## [1.1.0](https://github.com/tanem/daylog/compare/v1.0.3...v1.1.0) (2026-03-10)
 
 
