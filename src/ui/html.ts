@@ -24,6 +24,9 @@ const h = (
           key.slice(2).toLowerCase(),
           val as EventListener,
         )
+      } else if (key === 'style' && typeof val === 'string') {
+        // Use CSSOM to avoid CSP style-src violations.
+        element.style.cssText = val
       } else if (DOM_PROPERTIES.has(key)) {
         ;(element as unknown as Record<string, unknown>)[key] = val
       } else if (val !== false && val !== null && val !== undefined) {
