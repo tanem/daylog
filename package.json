@@ -54,6 +54,6 @@
     "open-props": "1.7.23"
   },
   "overrides": {
-    "serialize-javascript": "7.0.4"
+    "serialize-javascript": "7.1.1"
   }
 }
