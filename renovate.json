@@ -6,6 +6,8 @@
     ":maintainLockFilesWeekly",
     ":rebaseStalePrs"
   ],
+  "osvVulnerabilityAlerts": true,
+  "dependencyDashboardOSVVulnerabilitySummary": "all",
   "semanticCommitScope": null,
   "automergeStrategy": "squash",
   "packageRules": [
