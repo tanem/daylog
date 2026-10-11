@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/tanem/daylog/compare/v1.1.1...v1.1.2) (2026-10-11)
+
+
+### Bug Fixes
+
+* update dependency idb to v8.0.4 ([#49](https://github.com/tanem/daylog/issues/49)) ([0b83797](https://github.com/tanem/daylog/commit/0b8379759de6e8b91aa7c963b691f209ec771164))
+
 ## [1.1.1](https://github.com/tanem/daylog/compare/v1.1.0...v1.1.1) (2026-03-10)
 
 
